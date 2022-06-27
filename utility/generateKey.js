@@ -2,34 +2,26 @@
 // var path = require("path");
 // var fs = require("fs");
 
-// let Generate = (req, res) =>
-//   crypto.generateKeyPair(
-//     "rsa",
-//     {
-//       modulusLength: 4096,
-//       publicKeyEncoding: {
-//         type: "spki",
-//         format: "pem",
-//       },
-//       privateKeyEncoding: {
-//         type: "pkcs8",
-//         format: "pem",
-//         cipher: "aes-256-cbc",
-//         passphrase: process.env.SECRET_KEY,
-//       },
+// const { writeFileSync } = require("fs");
+// const { generateKeyPairSync } = require("crypto");
+
+// function Generate() {
+//   const { privateKey, publicKey } = generateKeyPairSync("rsa", {
+//     modulusLength: 2048,
+//     publicKeyEncoding: {
+//       type: "pkcs1",
+//       format: "pem",
 //     },
-//     (err, publicKey, privateKey) => {
-//       if (err) {
-//         console.log(err);
-//       } else {
-//         // console.log(publicKey);
-//         fs.writeFile("./utility/publicKey.pem", publicKey);
-//         fs.writeFile("./utility/privateKey.pem", privateKey);
-//         // fs.writeFileSync("private.pem", privateKey);
-//         return true;
-//       }
-//       // return publicKey;
-//     }
-//   );
+//     privateKeyEncoding: {
+//       type: "pkcs1",
+//       format: "pem",
+//       cipher: "aes-256-cbc",
+//       passphrase: process.env.SECRET_KEY,
+//     },
+//   });
+
+//   writeFileSync("./utility/privateKey.pem", privateKey);
+//   writeFileSync("./utility/publicKey.pem", publicKey);
+// }
 
 // module.exports = Generate;
