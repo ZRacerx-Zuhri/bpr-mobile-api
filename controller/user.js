@@ -5,7 +5,7 @@ const {
 var crypto = require("crypto");
 var path = require("path");
 var fs = require("fs");
-let db = require("../DbConnect/index");
+let db = require("../dbConnect/index");
 let jwt = require("jsonwebtoken");
 // const { Redis } = require("../utility/redis");
 
