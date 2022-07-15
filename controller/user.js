@@ -10,12 +10,14 @@ let jwt = require("jsonwebtoken");
 // const { Redis } = require("../utility/redis");
 
 const createUser = async (req, res) => {
+  let { pin } = req.body;
+  console.log(pin);
   try {
     const privateKey = fs.readFileSync("./utility/privateKey.pem", "utf8");
     const publicKey = fs.readFileSync("./utility/publicKey.pem", "utf8");
 
     let password = encryptStringWithRsaPublicKey(
-      "Password12",
+      pin,
       "./utility/privateKey.pem"
     );
     let decrypted = decryptStringWithRsaPrivateKey(
@@ -34,19 +36,37 @@ const validasi = async (req, res) => {
     let { user_id, pw_cetak } = req.body;
 
     let Request = await db.sequelize.query(
-      `SELECT * FROM acct_ebpr WHERE user_id = ? AND pw_cetak = ? AND status != '6'`,
+      `SELECT status,user_id FROM acct_ebpr WHERE user_id = ? AND pw_cetak = ?`,
       {
         replacements: [user_id, pw_cetak],
         type: db.sequelize.QueryTypes.SELECT,
       }
     );
 
-    res.status(200).send({
-      code: "000",
-      status: "ok",
-      message: "Success",
-      data: Request,
-    });
+    if (!Request.length) {
+      res.status(200).send({
+        code: "001",
+        status: "ok",
+        message: "User tidak ditemukan",
+        data: null,
+      });
+    } else {
+      if (Request[0].status === "0") {
+        res.status(200).send({
+          code: "000",
+          status: "ok",
+          message: "Success",
+          data: Request,
+        });
+      } else {
+        res.status(200).send({
+          code: "002",
+          status: "ok",
+          message: "User Sudah Terverifikasi",
+          data: null,
+        });
+      }
+    }
   } catch (error) {
     console.log("error validasi", error);
 
@@ -61,22 +81,51 @@ const validasi = async (req, res) => {
 
 const aktivasi = async (req, res) => {
   try {
-    let { password, user_id } = req.body;
-
-    let Request = await db.sequelize.query(
-      `UPDATE acct_ebpr SET password = ?, status = '1' WHERE user_id = ? AND status = '0'`,
+    let { password, user_id, pin } = req.body;
+    let Password = encryptStringWithRsaPublicKey(
+      password,
+      "./utility/privateKey.pem"
+    );
+    let Pin = encryptStringWithRsaPublicKey(pin, "./utility/privateKey.pem");
+    let Auth = await db.sequelize.query(
+      `SELECT user_id FROM acct_ebpr WHERE mpin = ? AND user_id = ?`,
       {
-        replacements: [password, user_id],
+        replacements: [Pin, user_id],
         type: db.sequelize.QueryTypes.SELECT,
       }
     );
 
-    res.status(200).send({
-      code: "000",
-      status: "ok",
-      message: "Success",
-      data: Request,
-    });
+    if (!Auth.length) {
+      res.status(200).send({
+        code: "003",
+        status: "ok",
+        message: "Gagal, Terjadi Kesalahan!!!",
+        data: null,
+      });
+    } else {
+      let [results, metadata] = await db.sequelize.query(
+        `UPDATE acct_ebpr SET password = ?, status = '1' WHERE user_id = ? AND mpin = ? AND status = '0'`,
+        {
+          replacements: [Password, user_id, Pin],
+        }
+      );
+      console.log(metadata.rowCount);
+      if (!metadata.rowCount) {
+        res.status(200).send({
+          code: "002",
+          status: "ok",
+          message: "User Sudah Terverifikasi",
+          data: null,
+        });
+      } else {
+        res.status(200).send({
+          code: "000",
+          status: "ok",
+          message: "Success",
+          data: "Aktivasi Berhasil",
+        });
+      }
+    }
   } catch (error) {
     console.log("error aktivasi", error);
 

@@ -5,7 +5,7 @@ const router = express.Router();
 
 router.post("/createuser", createUser);
 router.post("/validasi", validasi);
-router.post("/aktivasi", aktivasi);
+router.patch("/aktivasi", aktivasi);
 router.post("/login", Login);
 
 module.exports = router;
