@@ -64,7 +64,7 @@ const BillInquiry = async (req, res) => {
     }
   } catch (error) {
     //--error server--//
-    console.log("erro get product", error);
+    console.log("error inquiry", error);
     res.send(error);
   }
 };

@@ -5,6 +5,7 @@ require("dotenv").config();
 const cors = require("cors");
 const User = require("./route/user");
 const Ppob = require("./route/Ppob");
+require("./utility/redis");
 
 const { sequelize } = require("./dbConnect");
 
