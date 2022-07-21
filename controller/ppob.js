@@ -24,7 +24,7 @@ const productPPOB = async (req, res) => {
     let {} = req.body;
 
     let Request = await db.sequelize.query(
-      `SELECT A.produk_id, A.tipe_produk, A.urut_produk, A.nama_produk, B.produk_prov, B.admin_fee, B.denom, B.prioritas FROM kd_produk AS A INNER JOIN master_produk AS B ON A.produk_id = B.produk_id WHERE A.status = '1'`,
+      `SELECT A.produk_id, A.tipe_produk, A.urut_produk, A.nama_produk, C.nama_owner, B.produk_prov, A.nominal, B.admin_fee, B.denom, B.prioritas FROM kd_produk AS A INNER JOIN master_produk AS B ON A.produk_id = B.produk_id INNER JOIN produk_owner as C ON C.id_owner = A.id_owner WHERE A.status = '1'`,
       {
         replacements: [],
         type: db.sequelize.QueryTypes.SELECT,
