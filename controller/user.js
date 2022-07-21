@@ -94,6 +94,7 @@ const aktivasi = async (req, res) => {
         type: db.sequelize.QueryTypes.SELECT,
       }
     );
+    console.log(Auth);
 
     if (!Auth.length) {
       res.status(200).send({
@@ -147,7 +148,7 @@ const Login = async (req, res) => {
       "./utility/privateKey.pem"
     );
     let Request = await db.sequelize.query(
-      `SELECT * FROM acct_ebpr WHERE password = ? AND user_id = ?`,
+      `SELECT * FROM  acct_ebpr ac INNER JOIN dummy_rek_tabungan rk on ac.no_rek = rk.no_rek  WHERE password = ? AND user_id = ?`,
       {
         replacements: [Password, user_id],
         type: db.sequelize.QueryTypes.SELECT,
@@ -162,38 +163,46 @@ const Login = async (req, res) => {
         data: null,
       });
     } else {
-      console.log(Request[0]["user_id"]);
-      let accessToken = await jwt.sign(
-        { id: Request[0]["user_id"] },
-        process.env.SECRET_KEY,
-        {
-          expiresIn: "30m",
-        }
-      );
-      let refreshToken = await jwt.sign(
-        { id: Request[0]["user_id"] },
-        process.env.SECRET_KEY,
-        {
-          expiresIn: "24h",
-        }
-      );
+      if (Request[0]["status"] === "0") {
+        res.status(200).send({
+          code: "004",
+          status: "ok",
+          message: "Akun tidak aktif",
+          data: null,
+        });
+      } else {
+        let accessToken = await jwt.sign(
+          { id: Request[0]["user_id"] },
+          process.env.SECRET_KEY,
+          {
+            expiresIn: "30m",
+          }
+        );
+        let refreshToken = await jwt.sign(
+          { id: Request[0]["user_id"] },
+          process.env.SECRET_KEY,
+          {
+            expiresIn: "24h",
+          }
+        );
 
-      // await Redis.set(
-      //   Request[0]["user_id"],
-      //   JSON.stringify({
-      //     refreshToken,
-      //   }),
-      //   {
-      //     EX: 60 * 60 * 24,
-      //   }
-      // );
+        // await Redis.set(
+        //   Request[0]["user_id"],
+        //   JSON.stringify({
+        //     refreshToken,
+        //   }),
+        //   {
+        //     EX: 60 * 60 * 24,
+        //   }
+        // );
 
-      res.status(200).send({
-        code: "000",
-        status: "ok",
-        message: "Success",
-        data: [{ ...Request[0], accessToken, refreshToken }],
-      });
+        res.status(200).send({
+          code: "000",
+          status: "ok",
+          message: "Success",
+          data: [{ ...Request[0], accessToken, refreshToken }],
+        });
+      }
     }
   } catch (error) {
     console.log("error login", error.message);
