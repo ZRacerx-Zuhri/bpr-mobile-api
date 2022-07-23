@@ -69,35 +69,47 @@ const BillInquiry = async (req, res) => {
         "tgljam_trans" : Request.data.settlement_date
       }
       
-      let hold_dana = await db.sequelize.query(`INSERT INTO dummy_hold_dana(no_rek, nama_rek, tcode, ket_trans, reff, amount, tgljam_trans, status) VALUES (?,?,?,?,?,?,?,'0')`, {
-        replacements: [payload.no_rek, payload.nama_rek, payload.tcode, payload.ket_trans, payload.reff, payload.amount, payload.tgljam_trans],
+      // let hold_dana = await db.sequelize.query(`INSERT INTO dummy_hold_dana(no_rek, nama_rek, tcode, ket_trans, reff, amount, tgljam_trans, status) VALUES (?,?,?,?,?,?,?,'0')`, {
+      let check_saldo = await db.sequelize.query(`SELECT * FROM dummy_rek_tabungan WHERE no_rek = ? AND nama_rek = ?`, {
+        replacements: [payload.no_rek, payload.nama_rek],
         type: db.sequelize.QueryTypes.SELECT,
       });
-      if (!hold_dana.rowCount) {
+      if (!check_saldo.rowCount) {
         res.status(200).send({
           code: "099",
           status: "ok",
-          message: "Gagal, Terjadi Kesalahan Insert Dana!!!",
+          message: "Gagal, Terjadi Kesalahan Pencarian Rekening!!!",
           data: null,
         });
       } else {
-        let transaksi = await db.sequelize.query(`INSERT INTO dummy_transaksi(no_rek, nama_rek, tcode, produk_id, ket_trans, reff, amount, tgljam_trans, status_rek) VALUES (?,?,?,?,?,?,?,?,'0')`, {
-          replacements: [payload.no_rek, payload.nama_rek, payload.tcode, payload.produk_id, payload.ket_trans, payload.reff, payload.amount, payload.tgljam_trans],
-          type: db.sequelize.QueryTypes.SELECT,
-        });
-        if (!transaksi.rowCount) {
+        let saldo = parseInt(check_saldo[0].saldo)
+        let saldo_min = parseInt(check_saldo[0].saldo_min)
+        if ((saldo-payload.amount)>saldo_min) {
+          let transaksi = await db.sequelize.query(`INSERT INTO dummy_transaksi(no_rek, nama_rek, tcode, produk_id, ket_trans, reff, amount, tgljam_trans, status_rek) VALUES (?,?,?,?,?,?,?,?,'0')`, {
+            replacements: [payload.no_rek, payload.nama_rek, payload.tcode, payload.produk_id, payload.ket_trans, payload.reff, payload.amount, payload.tgljam_trans],
+            type: db.sequelize.QueryTypes.SELECT,
+          });
+          if (!transaksi.rowCount) {
+            res.status(200).send({
+              code: "099",
+              status: "ok",
+              message: "Gagal, Terjadi Kesalahan Insert Transaksi!!!",
+              data: null,
+            });
+          } else {
+            res.status(200).send({
+              code: "000",
+              status: "ok",
+              message: "Success",
+              data: "Inqury Berhasil Dibuat",
+            });
+          }
+        } else {
           res.status(200).send({
             code: "099",
             status: "ok",
-            message: "Gagal, Terjadi Kesalahan Insert Transaksi!!!",
+            message: "Gagal, Saldo Tidak Mencukupi!!!",
             data: null,
-          });
-        } else {
-          res.status(200).send({
-            code: "000",
-            status: "ok",
-            message: "Success",
-            data: "Inqury Berhasil Dibuat",
           });
         }
       }
@@ -143,37 +155,24 @@ const BillPayment = async (req, res) => {
           data: null,
         });
       } else {
-        let lepas_dana = await db.sequelize.query(`UPDATE dummy_hold_dana SET status = '1' WHERE no_rek = ? AND nama_rek = ? AND tcode = '5000' AND reff = ? AND status = '0'`, {
-          replacements: [payload.no_rek, payload.nama_rek, payload.reff],
+        let bayar_ppob = await db.sequelize.query(`UPDATE dummy_rek_tabungan SET saldo = saldo - ? WHERE no_rek = ? AND status_rek = '1'`, {
+          replacements: [payload.amount, payload.no_rek],
           type: db.sequelize.QueryTypes.SELECT,
         });
-        if (!lepas_dana.rowCount) {
+        if (!bayar_ppob.rowCount) {
           res.status(200).send({
             code: "099",
             status: "ok",
-            message: "Gagal, Terjadi Kesalahan Update Dana!!!",
+            message: "Gagal, Terjadi Kesalahan Kurangin Saldo!!!",
             data: null,
           });
         } else {
-          let bayar_ppob = await db.sequelize.query(`UPDATE dummy_rek_tabungan SET saldo = saldo - ? WHERE no_rek = ? AND status_rek = '1'`, {
-            replacements: [payload.amount, payload.no_rek],
-            type: db.sequelize.QueryTypes.SELECT,
+          res.status(200).send({
+            code: "000",
+            status: "ok",
+            message: "Success",
+            data: Request,
           });
-          if (!bayar_ppob.rowCount) {
-            res.status(200).send({
-              code: "099",
-              status: "ok",
-              message: "Gagal, Terjadi Kesalahan Kurangin Saldo!!!",
-              data: null,
-            });
-          } else {
-            res.status(200).send({
-              code: "000",
-              status: "ok",
-              message: "Success",
-              data: Request,
-            });
-          }
         }
       }
     } else {
