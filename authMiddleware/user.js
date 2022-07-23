@@ -11,10 +11,10 @@ const VerifyToken = async (req, res, next) => {
 
     const token = req.get("Authorization").split(" ")[1];
     let FindKey = [req.body, req.query];
+    // console.log(token, process.env.SECRET_KEY);
 
     jwt.verify(token, process.env.SECRET_KEY, async (err, payload) => {
       try {
-        console.log("cek", payload.id);
         if (err) {
           //--Error JWT--//
           console.log("Errro JWT Verify Access Token", err.message);

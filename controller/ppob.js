@@ -38,8 +38,6 @@ const productPPOB = async (req, res) => {
       data: Request,
     });
   } catch (error) {
-    console.log("error get clinic", error);
-
     res.status(200).send({
       code: "E99",
       status: "error",
@@ -136,7 +134,12 @@ const BillInquiry = async (req, res) => {
   } catch (error) {
     //--error server--//
     console.log("error inquiry", error);
-    res.send(error);
+    res.status(200).send({
+      code: "E99",
+      status: "error",
+      message: error.message,
+      data: null,
+    });
   }
 };
 const BillPayment = async (req, res) => {
