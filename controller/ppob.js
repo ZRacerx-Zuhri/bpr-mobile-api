@@ -1,5 +1,6 @@
 const axios = require("../Services/API");
 const db = require("../dbConnect/index");
+const moment = require("moment");
 
 const productPPOBOy = async (req, res) => {
   try {
@@ -21,8 +22,6 @@ const productPPOBOy = async (req, res) => {
 
 const productPPOB = async (req, res) => {
   try {
-    let {} = req.body;
-
     let Request = await db.sequelize.query(
       `SELECT A.produk_id, A.tipe_produk, A.urut_produk, A.nama_produk, C.nama_owner, B.produk_prov, A.nominal, B.admin_fee, B.denom, B.prioritas FROM kd_produk AS A INNER JOIN master_produk AS B ON A.produk_id = B.produk_id INNER JOIN produk_owner as C ON C.id_owner = A.id_owner WHERE A.status = '1'`,
       {
@@ -30,12 +29,17 @@ const productPPOB = async (req, res) => {
         type: db.sequelize.QueryTypes.SELECT,
       }
     );
-
+    let Copy = Request.map((val) => {
+      if (val.produk_prov.includes("plnpre")) {
+        val.produk_prov = "plnpre";
+      }
+      return val;
+    });
     res.status(200).send({
       code: "000",
       status: "ok",
       message: "Success",
-      data: Request,
+      data: Copy,
     });
   } catch (error) {
     res.status(200).send({
@@ -56,8 +60,19 @@ const BillInquiry = async (req, res) => {
     amount,
     note,
     no_rek,
+    customerName,
   } = req.body;
+  partner_tx_id = `INV/${moment(new Date()).format(
+    "YYYYMMDD"
+  )}/${new Date().getTime()}`;
   try {
+    console.log({
+      customer_id,
+      product_id,
+      partner_tx_id,
+      amount,
+    });
+
     let Request = await axios.post("/api/v2/bill", {
       customer_id,
       product_id,
@@ -67,18 +82,22 @@ const BillInquiry = async (req, res) => {
 
     if (Request.data.status.code === "000") {
       //--berhasil dapat list product update atau insert ke db --//
-      res.status(200).send(Request.data);
+
+      console.log("datat", Request.data.data);
       const payload = {
         tcode: "5000",
         no_rek: no_rek,
-        nama_rek: Request.data.customer_name,
-        produk_id: Request.data.product_id,
-        ket_trans: note,
-        reff: Request.data.partner_tx_id,
-        amount: parseInt(Request.data.total_amount),
-        tgljam_trans: Request.data.settlement_date,
+        nama_rek: Request.data.data.customer_name,
+        produk_id: Request.data.data.product_id,
+        ket_trans: customerName + " " + nama_produk,
+        reff: Request.data.data.partner_tx_id,
+        amount:
+          Request.data.data.amount +
+          parseInt(JSON.parse(Request.data.data.additional_data).admin_fee),
+        tgljam_trans: moment().format("YYYY-MM-DD HH:mm:ss"),
       };
-      let transaksi = await db.sequelize.query(
+
+      let [results, metadata] = await db.sequelize.query(
         `INSERT INTO dummy_transaksi(no_rek, nama_rek, tcode, produk_id, ket_trans, reff, amount, tgljam_trans, status_rek) VALUES (?,?,?,?,?,?,?,?,'0')`,
         {
           replacements: [
@@ -91,10 +110,12 @@ const BillInquiry = async (req, res) => {
             payload.amount,
             payload.tgljam_trans,
           ],
-          type: db.sequelize.QueryTypes.SELECT,
         }
       );
-      if (!transaksi.rowCount) {
+
+      console.log(metadata);
+
+      if (!metadata) {
         res.status(200).send({
           code: "099",
           status: "ok",
@@ -111,7 +132,13 @@ const BillInquiry = async (req, res) => {
       }
     } else {
       //--status gagal api--//
-      res.status(200).send(Request.data);
+
+      res.status(200).send({
+        code: Request.data.status.code,
+        status: "ok",
+        message: Request.data.status.message,
+        data: null,
+      });
     }
   } catch (error) {
     //--error server--//
