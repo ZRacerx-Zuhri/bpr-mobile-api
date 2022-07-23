@@ -46,7 +46,7 @@ const productPPOB = async (req, res) => {
 };
 
 const BillInquiry = async (req, res) => {
-  let { customer_id, product_id, partner_tx_id, amount, note, no_rek } = req.body;
+  let { customer_id, product_id, nama_produk, partner_tx_id, amount, note, no_rek } = req.body;
   try {
     let Request = await axios.post("/api/v2/bill", {
       customer_id,
@@ -101,7 +101,7 @@ const BillInquiry = async (req, res) => {
               code: "000",
               status: "ok",
               message: "Success",
-              data: "Inqury Berhasil Dibuat",
+              data: {...Request.data.data, nama_produk },
             });
           }
         } else {
