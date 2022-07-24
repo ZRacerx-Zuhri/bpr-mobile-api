@@ -198,7 +198,6 @@ const BillPayment = async (req, res) => {
               ]
             }
           );
-          console.log(metadata);
           if (!metadata) {
             res.status(200).send({
               code: "099",
@@ -213,7 +212,6 @@ const BillPayment = async (req, res) => {
                 replacements: [amount, no_rek]
               }
             );
-            console.log(metadata);
             if (!metadata) {
               res.status(200).send({
                 code: "099",
@@ -226,13 +224,24 @@ const BillPayment = async (req, res) => {
                 partner_tx_id,
                 note,
               });
-          
               if (Request.data.status.code === "102") {
                 //--berhasil dapat list product update atau insert ke db --//
-                res.status(200).send(Request.data);
+                console.log("Success");
+                res.status(200).send({
+                  code: "000",
+                  status: "ok",
+                  message: Request.data.status.message,
+                  data: { ...Request.data.data}
+                });
               } else {
                 //--status gagal api--//
-                res.status(200).send(Request.data);
+                console.log("Gagal");
+                res.status(200).send({
+                  code: "099",
+                  status: "ok",
+                  message: Request.data.status.message,
+                  data: { ...Request.data.data}
+                });
               }
             }
           }
