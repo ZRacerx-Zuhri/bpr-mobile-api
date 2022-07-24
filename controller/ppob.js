@@ -267,8 +267,13 @@ const BillPayment = async (req, res) => {
     }
   } catch (error) {
     //--error server--//
-    console.log("erro get product", error);
-    res.send(error);
+    console.log("error Payment", error);
+    res.status(200).send({
+      code: "E99",
+      status: "error",
+      message: error.message,
+      data: null,
+    });
   }
 };
 
