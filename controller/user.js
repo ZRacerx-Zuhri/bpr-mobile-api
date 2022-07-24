@@ -31,6 +31,43 @@ const createUser = async (req, res) => {
   }
 };
 
+
+const saldo = async (req, res) => {
+  try {
+    let check_saldo = await db.sequelize.query(
+      `SELECT * FROM dummy_rek_tabungan WHERE no_rek = ? AND nama_rek = ?`,
+      {
+        replacements: [no_rek, nama_rek],
+        type: db.sequelize.QueryTypes.SELECT,
+      }
+    );
+    if (!check_saldo.rowCount) {
+      res.status(200).send({
+        code: "099",
+        status: "ok",
+        message: "Gagal, Terjadi Kesalahan Pencarian Rekening!!!",
+        data: null,
+      });
+    } else {
+      res.status(200).send({
+        code: "000",
+        status: "ok",
+        message: "Success",
+        data: check_saldo,
+      });
+    }
+  } catch (error) {
+    console.log("error validasi", error);
+
+    res.status(200).send({
+      code: "E99",
+      status: "error",
+      message: error.message,
+      data: null,
+    });
+  }
+};
+
 const validasi = async (req, res) => {
   try {
     let { user_id, pw_cetak } = req.body;
@@ -216,4 +253,4 @@ const Login = async (req, res) => {
   }
 };
 
-module.exports = { createUser, validasi, aktivasi, Login };
+module.exports = { createUser, validasi, aktivasi, Login, saldo };

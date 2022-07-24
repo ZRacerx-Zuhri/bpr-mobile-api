@@ -58,7 +58,6 @@ const BillInquiry = async (req, res) => {
     nama_produk,
     partner_tx_id,
     amount,
-    note,
     no_rek,
     customerName,
   } = req.body;
@@ -152,28 +151,28 @@ const BillInquiry = async (req, res) => {
   }
 };
 const BillPayment = async (req, res) => {
-  let { partner_tx_id, note, no_rek } = req.body;
+  let { partner_tx_id, note, no_rek, nama_rek, produk_id, reff, amount, pin, user_id } = req.body;
   try {
-    let Request = await axios.post("/api/v2/bill/payment", {
-      partner_tx_id,
-      note,
-    });
+    let Auth = await db.sequelize.query(
+      `SELECT user_id FROM acct_ebpr WHERE mpin = ? AND user_id = ?`,
+      {
+        replacements: [pin, user_id],
+        type: db.sequelize.QueryTypes.SELECT,
+      }
+    );
 
-    if (Request.data.status.code === "102") {
-      //--berhasil dapat list product update atau insert ke db --//
-      res.status(200).send(Request.data);
-      const payload = {
-        no_rek: no_rek,
-        nama_rek: Request.data.customer_name,
-        produk_id: Request.data.product_id,
-        ket_trans: Request.data.note,
-        reff: Request.data.partner_tx_id,
-        amount: Request.data.total_amount,
-      };
+    if (!Auth.length) {
+      res.status(200).send({
+        code: "003",
+        status: "ok",
+        message: "Gagal, Terjadi Kesalahan!!!",
+        data: null,
+      });
+    } else {
       let check_saldo = await db.sequelize.query(
         `SELECT * FROM dummy_rek_tabungan WHERE no_rek = ? AND nama_rek = ?`,
         {
-          replacements: [payload.no_rek, payload.nama_rek],
+          replacements: [no_rek, nama_rek],
           type: db.sequelize.QueryTypes.SELECT,
         }
       );
@@ -187,21 +186,21 @@ const BillPayment = async (req, res) => {
       } else {
         let saldo = parseInt(check_saldo[0].saldo);
         let saldo_min = parseInt(check_saldo[0].saldo_min);
-        if (saldo - payload.amount > saldo_min) {
-          let pembayaran = await db.sequelize.query(
+        if (saldo - amount > saldo_min) {
+          let [results, metadata] = await db.sequelize.query(
             `UPDATE dummy_transaksi SET status = '1', tcode = '5001' WHERE no_rek = ? AND nama_rek = ? AND tcode = '5000' AND produk_id = ? AND reff = ? AND amount = ? AND status_rek = '0'`,
             {
               replacements: [
-                payload.no_rek,
-                payload.nama_rek,
-                payload.produk_id,
-                payload.reff,
-                payload.amount,
+                no_rek,
+                nama_rek,
+                produk_id,
+                reff,
+                amount,
               ],
               type: db.sequelize.QueryTypes.SELECT,
             }
           );
-          if (!pembayaran.rowCount) {
+          if (!metadata) {
             res.status(200).send({
               code: "099",
               status: "ok",
@@ -209,14 +208,14 @@ const BillPayment = async (req, res) => {
               data: null,
             });
           } else {
-            let bayar_ppob = await db.sequelize.query(
+            let [results, metadata] = await db.sequelize.query(
               `UPDATE dummy_rek_tabungan SET saldo = saldo - ? WHERE no_rek = ? AND status_rek = '1'`,
               {
-                replacements: [payload.amount, payload.no_rek],
+                replacements: [amount, no_rek],
                 type: db.sequelize.QueryTypes.SELECT,
               }
             );
-            if (!bayar_ppob.rowCount) {
+            if (!metadata) {
               res.status(200).send({
                 code: "099",
                 status: "ok",
@@ -224,12 +223,18 @@ const BillPayment = async (req, res) => {
                 data: null,
               });
             } else {
-              res.status(200).send({
-                code: "000",
-                status: "ok",
-                message: "Success",
-                data: Request,
+              let Request = await axios.post("/api/v2/bill/payment", {
+                partner_tx_id,
+                note,
               });
+          
+              if (Request.data.status.code === "102") {
+                //--berhasil dapat list product update atau insert ke db --//
+                res.status(200).send(Request.data);
+              } else {
+                //--status gagal api--//
+                res.status(200).send(Request.data);
+              }
             }
           }
         } else {
@@ -241,9 +246,6 @@ const BillPayment = async (req, res) => {
           });
         }
       }
-    } else {
-      //--status gagal api--//
-      res.status(200).send(Request.data);
     }
   } catch (error) {
     //--error server--//
