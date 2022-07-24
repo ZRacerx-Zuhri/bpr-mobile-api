@@ -7,6 +7,7 @@ var path = require("path");
 var fs = require("fs");
 let db = require("../dbConnect/index");
 let jwt = require("jsonwebtoken");
+const { log } = require("console");
 // const { Redis } = require("../utility/redis");
 
 const createUser = async (req, res) => {
@@ -33,6 +34,7 @@ const createUser = async (req, res) => {
 
 
 const saldo = async (req, res) => {
+  let { no_rek, nama_rek } = req.body;
   try {
     let check_saldo = await db.sequelize.query(
       `SELECT * FROM dummy_rek_tabungan WHERE no_rek = ? AND nama_rek = ?`,
@@ -41,7 +43,7 @@ const saldo = async (req, res) => {
         type: db.sequelize.QueryTypes.SELECT,
       }
     );
-    if (!check_saldo.rowCount) {
+    if (!check_saldo.length) {
       res.status(200).send({
         code: "099",
         status: "ok",

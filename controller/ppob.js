@@ -160,7 +160,6 @@ const BillPayment = async (req, res) => {
         type: db.sequelize.QueryTypes.SELECT,
       }
     );
-
     if (!Auth.length) {
       res.status(200).send({
         code: "003",
@@ -170,13 +169,13 @@ const BillPayment = async (req, res) => {
       });
     } else {
       let check_saldo = await db.sequelize.query(
-        `SELECT * FROM dummy_rek_tabungan WHERE no_rek = ? AND nama_rek = ?`,
+        `SELECT saldo,saldo_min FROM dummy_rek_tabungan WHERE no_rek = ? AND nama_rek = ?`,
         {
           replacements: [no_rek, nama_rek],
           type: db.sequelize.QueryTypes.SELECT,
         }
       );
-      if (!check_saldo.rowCount) {
+      if (!check_saldo.length) {
         res.status(200).send({
           code: "099",
           status: "ok",
@@ -188,18 +187,18 @@ const BillPayment = async (req, res) => {
         let saldo_min = parseInt(check_saldo[0].saldo_min);
         if (saldo - amount > saldo_min) {
           let [results, metadata] = await db.sequelize.query(
-            `UPDATE dummy_transaksi SET status = '1', tcode = '5001' WHERE no_rek = ? AND nama_rek = ? AND tcode = '5000' AND produk_id = ? AND reff = ? AND amount = ? AND status_rek = '0'`,
+            `UPDATE dummy_transaksi SET status_rek = '1', tcode = '5001' WHERE no_rek = ? AND nama_rek = ? AND tcode = '5000' AND produk_id = ? AND reff = ? AND amount = ? AND status_rek = '0'`,
             {
               replacements: [
                 no_rek,
                 nama_rek,
                 produk_id,
                 reff,
-                amount,
-              ],
-              type: db.sequelize.QueryTypes.SELECT,
+                amount
+              ]
             }
           );
+          console.log(metadata);
           if (!metadata) {
             res.status(200).send({
               code: "099",
@@ -211,10 +210,10 @@ const BillPayment = async (req, res) => {
             let [results, metadata] = await db.sequelize.query(
               `UPDATE dummy_rek_tabungan SET saldo = saldo - ? WHERE no_rek = ? AND status_rek = '1'`,
               {
-                replacements: [amount, no_rek],
-                type: db.sequelize.QueryTypes.SELECT,
+                replacements: [amount, no_rek]
               }
             );
+            console.log(metadata);
             if (!metadata) {
               res.status(200).send({
                 code: "099",
