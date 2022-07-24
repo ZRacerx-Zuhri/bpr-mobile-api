@@ -158,93 +158,95 @@ const BillPayment = async (req, res) => {
       partner_tx_id,
       note,
     });
+    console.log(Request.data);
+    res.status(200).send(Request.data);
 
-    if (Request.data.status.code === "102") {
-      //--berhasil dapat list product update atau insert ke db --//
-      res.status(200).send(Request.data);
-      const payload = {
-        no_rek: no_rek,
-        nama_rek: Request.data.customer_name,
-        produk_id: Request.data.product_id,
-        ket_trans: Request.data.note,
-        reff: Request.data.partner_tx_id,
-        amount: Request.data.total_amount,
-      };
-      let check_saldo = await db.sequelize.query(
-        `SELECT * FROM dummy_rek_tabungan WHERE no_rek = ? AND nama_rek = ?`,
-        {
-          replacements: [payload.no_rek, payload.nama_rek],
-          type: db.sequelize.QueryTypes.SELECT,
-        }
-      );
-      if (!check_saldo.rowCount) {
-        res.status(200).send({
-          code: "099",
-          status: "ok",
-          message: "Gagal, Terjadi Kesalahan Pencarian Rekening!!!",
-          data: null,
-        });
-      } else {
-        let saldo = parseInt(check_saldo[0].saldo);
-        let saldo_min = parseInt(check_saldo[0].saldo_min);
-        if (saldo - payload.amount > saldo_min) {
-          let pembayaran = await db.sequelize.query(
-            `UPDATE dummy_transaksi SET status = '1', tcode = '5001' WHERE no_rek = ? AND nama_rek = ? AND tcode = '5000' AND produk_id = ? AND reff = ? AND amount = ? AND status_rek = '0'`,
-            {
-              replacements: [
-                payload.no_rek,
-                payload.nama_rek,
-                payload.produk_id,
-                payload.reff,
-                payload.amount,
-              ],
-              type: db.sequelize.QueryTypes.SELECT,
-            }
-          );
-          if (!pembayaran.rowCount) {
-            res.status(200).send({
-              code: "099",
-              status: "ok",
-              message: "Gagal, Terjadi Kesalahan Update Transaksi!!!",
-              data: null,
-            });
-          } else {
-            let bayar_ppob = await db.sequelize.query(
-              `UPDATE dummy_rek_tabungan SET saldo = saldo - ? WHERE no_rek = ? AND status_rek = '1'`,
-              {
-                replacements: [payload.amount, payload.no_rek],
-                type: db.sequelize.QueryTypes.SELECT,
-              }
-            );
-            if (!bayar_ppob.rowCount) {
-              res.status(200).send({
-                code: "099",
-                status: "ok",
-                message: "Gagal, Terjadi Kesalahan Update Saldo!!!",
-                data: null,
-              });
-            } else {
-              res.status(200).send({
-                code: "000",
-                status: "ok",
-                message: "Success",
-                data: Request,
-              });
-            }
-          }
-        } else {
-          res.status(200).send({
-            code: "099",
-            status: "ok",
-            message: "Gagal, Terjadi Kesalahan Kurangin Saldo!!!",
-            data: null,
-          });
-        }
-      }
-    } else {
-      //--status gagal api--//
-      res.status(200).send(Request.data);
-    }
+    // if (Request.data.status.code === "102") {
+    //   //--berhasil dapat list product update atau insert ke db --//
+    //   res.status(200).send(Request.data);
+    //   const payload = {
+    //     no_rek: no_rek,
+    //     nama_rek: Request.data.customer_name,
+    //     produk_id: Request.data.product_id,
+    //     ket_trans: Request.data.note,
+    //     reff: Request.data.partner_tx_id,
+    //     amount: Request.data.total_amount,
+    //   };
+    //   let check_saldo = await db.sequelize.query(
+    //     `SELECT * FROM dummy_rek_tabungan WHERE no_rek = ? AND nama_rek = ?`,
+    //     {
+    //       replacements: [payload.no_rek, payload.nama_rek],
+    //       type: db.sequelize.QueryTypes.SELECT,
+    //     }
+    //   );
+    //   if (!check_saldo.rowCount) {
+    //     res.status(200).send({
+    //       code: "099",
+    //       status: "ok",
+    //       message: "Gagal, Terjadi Kesalahan Pencarian Rekening!!!",
+    //       data: null,
+    //     });
+    //   } else {
+    //     let saldo = parseInt(check_saldo[0].saldo);
+    //     let saldo_min = parseInt(check_saldo[0].saldo_min);
+    //     if (saldo - payload.amount > saldo_min) {
+    //       let pembayaran = await db.sequelize.query(
+    //         `UPDATE dummy_transaksi SET status = '1', tcode = '5001' WHERE no_rek = ? AND nama_rek = ? AND tcode = '5000' AND produk_id = ? AND reff = ? AND amount = ? AND status_rek = '0'`,
+    //         {
+    //           replacements: [
+    //             payload.no_rek,
+    //             payload.nama_rek,
+    //             payload.produk_id,
+    //             payload.reff,
+    //             payload.amount,
+    //           ],
+    //           type: db.sequelize.QueryTypes.SELECT,
+    //         }
+    //       );
+    //       if (!pembayaran.rowCount) {
+    //         res.status(200).send({
+    //           code: "099",
+    //           status: "ok",
+    //           message: "Gagal, Terjadi Kesalahan Update Transaksi!!!",
+    //           data: null,
+    //         });
+    //       } else {
+    //         let bayar_ppob = await db.sequelize.query(
+    //           `UPDATE dummy_rek_tabungan SET saldo = saldo - ? WHERE no_rek = ? AND status_rek = '1'`,
+    //           {
+    //             replacements: [payload.amount, payload.no_rek],
+    //             type: db.sequelize.QueryTypes.SELECT,
+    //           }
+    //         );
+    //         if (!bayar_ppob.rowCount) {
+    //           res.status(200).send({
+    //             code: "099",
+    //             status: "ok",
+    //             message: "Gagal, Terjadi Kesalahan Update Saldo!!!",
+    //             data: null,
+    //           });
+    //         } else {
+    //           res.status(200).send({
+    //             code: "000",
+    //             status: "ok",
+    //             message: "Success",
+    //             data: Request,
+    //           });
+    //         }
+    //       }
+    //     } else {
+    //       res.status(200).send({
+    //         code: "099",
+    //         status: "ok",
+    //         message: "Gagal, Terjadi Kesalahan Kurangin Saldo!!!",
+    //         data: null,
+    //       });
+    //     }
+    //   }
+    // } else {
+    //   //--status gagal api--//
+    //   res.status(200).send(Request.data);
+    // }
   } catch (error) {
     //--error server--//
     console.log("erro get product", error);
