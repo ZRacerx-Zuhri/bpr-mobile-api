@@ -83,13 +83,13 @@ const BillInquiry = async (req, res) => {
     if (Request.data.status.code === "000") {
       //--berhasil dapat list product update atau insert ke db --//
 
-      console.log("datat", Request.data.data);
+      console.log("data", Request.data.data);
       const payload = {
         tcode: "5000",
         no_rek: no_rek,
         nama_rek: Request.data.data.customer_name,
         produk_id: Request.data.data.product_id,
-        ket_trans: customerName + " " + nama_produk,
+        ket_trans: `${customerName} ${nama_produk} ${Request.data.data.customer_name}`,
         reff: Request.data.data.partner_tx_id,
         amount:
           Request.data.data.amount +
@@ -127,7 +127,7 @@ const BillInquiry = async (req, res) => {
           code: "000",
           status: "ok",
           message: "Success",
-          data: { ...Request.data.data, nama_produk },
+          data: { ...Request.data.data, nama_produk, nama_rek: customerName },
         });
       }
     } else {
@@ -151,6 +151,19 @@ const BillInquiry = async (req, res) => {
     });
   }
 };
+
+let data = {
+  additional_data:
+    '{"customer_id":"0821555","customer_name":"CUSTOMER NAME","admin_fee":"2500"}',
+  amount: 5720,
+  customer_id: "0821555",
+  customer_name: "CUSTOMER NAME",
+  nama_produk: "Pulsa Simpati 5.000",
+  partner_tx_id: "INV/20220725/1658710154166",
+  product_id: "sim5",
+  tx_id: "6a004280-5225-4ae1-9399-fd7fd1859112",
+};
+
 const BillPayment = async (req, res) => {
   let {
     partner_tx_id,
@@ -240,7 +253,7 @@ const BillPayment = async (req, res) => {
                 res.status(200).send({
                   code: "000",
                   status: "ok",
-                  message: Request.data.status.message,
+                  message: "Pembayaran sedang diproses",
                   data: { ...Request.data.data },
                 });
               } else {
