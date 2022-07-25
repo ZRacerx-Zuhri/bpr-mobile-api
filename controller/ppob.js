@@ -87,7 +87,7 @@ const BillInquiry = async (req, res) => {
       const payload = {
         tcode: "5000",
         no_rek: no_rek,
-        nama_rek: Request.data.data.customer_name,
+        nama_rek: customerName,
         produk_id: Request.data.data.product_id,
         ket_trans: `${customerName} ${nama_produk} ${Request.data.data.customer_name}`,
         reff: Request.data.data.partner_tx_id,
