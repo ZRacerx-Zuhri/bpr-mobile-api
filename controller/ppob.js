@@ -253,7 +253,7 @@ const BillPayment = async (req, res) => {
                 res.status(200).send({
                   code: "000",
                   status: "ok",
-                  message: "Pembayaran sedang diproses",
+                  message: `Transaksi sudah diproses \n Cek saldo pulsa anda`,
                   data: { ...Request.data.data },
                 });
               } else {
