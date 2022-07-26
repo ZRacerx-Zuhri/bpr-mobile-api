@@ -1,6 +1,7 @@
 const axios = require("../Services/API");
 const db = require("../dbConnect/index");
 const moment = require("moment");
+const { encryptStringWithRsaPublicKey } = require("../utility/encrypt");
 
 const productPPOBOy = async (req, res) => {
   try {
@@ -82,13 +83,13 @@ const BillInquiry = async (req, res) => {
     if (Request.data.status.code === "000") {
       //--berhasil dapat list product update atau insert ke db --//
 
-      console.log("datat", Request.data.data);
+      console.log("data", Request.data.data);
       const payload = {
         tcode: "5000",
         no_rek: no_rek,
-        nama_rek: Request.data.data.customer_name,
+        nama_rek: customerName,
         produk_id: Request.data.data.product_id,
-        ket_trans: customerName + " " + nama_produk,
+        ket_trans: `${customerName} ${nama_produk} ${Request.data.data.customer_name}`,
         reff: Request.data.data.partner_tx_id,
         amount:
           Request.data.data.amount +
@@ -112,7 +113,7 @@ const BillInquiry = async (req, res) => {
         }
       );
 
-      console.log(metadata);
+      // console.log(metadata);
 
       if (!metadata) {
         res.status(200).send({
@@ -126,7 +127,7 @@ const BillInquiry = async (req, res) => {
           code: "000",
           status: "ok",
           message: "Success",
-          data: { ...Request.data.data, nama_produk },
+          data: { ...Request.data.data, nama_produk, nama_rek: customerName },
         });
       }
     } else {
@@ -151,16 +152,43 @@ const BillInquiry = async (req, res) => {
   }
 };
 
+let data = {
+  additional_data:
+    '{"customer_id":"0821555","customer_name":"CUSTOMER NAME","admin_fee":"2500"}',
+  amount: 5720,
+  customer_id: "0821555",
+  customer_name: "CUSTOMER NAME",
+  nama_produk: "Pulsa Simpati 5.000",
+  partner_tx_id: "INV/20220725/1658710154166",
+  product_id: "sim5",
+  tx_id: "6a004280-5225-4ae1-9399-fd7fd1859112",
+};
+
 const BillPayment = async (req, res) => {
-  let { partner_tx_id, note, no_rek, nama_rek, produk_id, reff, amount, pin, user_id } = req.body;
+  let {
+    partner_tx_id,
+    note,
+    no_rek,
+    nama_rek,
+    produk_id,
+    reff,
+    amount,
+    pin,
+    user_id,
+  } = req.body;
+  // encryptStringWithRsaPublicKey(pin,"./utility/privateKey.pem")
   try {
     let Auth = await db.sequelize.query(
       `SELECT user_id FROM acct_ebpr WHERE mpin = ? AND user_id = ?`,
       {
-        replacements: [pin, user_id],
+        replacements: [
+          encryptStringWithRsaPublicKey(pin, "./utility/privateKey.pem"),
+          user_id,
+        ],
         type: db.sequelize.QueryTypes.SELECT,
       }
     );
+    // console.log("au", Auth);
     if (!Auth.length) {
       res.status(200).send({
         code: "003",
@@ -196,7 +224,7 @@ const BillPayment = async (req, res) => {
                 produk_id,
                 reff,
                 amount
-              ]
+              ],
             }
           );
           if (!metadata) {
@@ -210,7 +238,7 @@ const BillPayment = async (req, res) => {
             let [results, metadata] = await db.sequelize.query(
               `UPDATE dummy_rek_tabungan SET saldo = saldo - ? WHERE no_rek = ? AND status_rek = '1'`,
               {
-                replacements: [amount, no_rek]
+                replacements: [amount, no_rek],
               }
             );
             if (!metadata) {
@@ -231,8 +259,8 @@ const BillPayment = async (req, res) => {
                 res.status(200).send({
                   code: "000",
                   status: "ok",
-                  message: Request.data.status.message,
-                  data: { ...Request.data.data}
+                  message: "Pembayaran sedang diproses",
+                  data: { ...Request.data.data },
                 });
               } else {
                 //--status gagal api--//
@@ -241,7 +269,7 @@ const BillPayment = async (req, res) => {
                   code: "099",
                   status: "ok",
                   message: Request.data.status.message,
-                  data: { ...Request.data.data}
+                  data: { ...Request.data.data },
                 });
               }
             }
@@ -258,8 +286,13 @@ const BillPayment = async (req, res) => {
     }
   } catch (error) {
     //--error server--//
-    console.log("erro get product", error);
-    res.send(error);
+    console.log("error Payment", error);
+    res.status(200).send({
+      code: "E99",
+      status: "error",
+      message: error.message,
+      data: null,
+    });
   }
 };
 
@@ -295,7 +328,13 @@ const HistoryTransaction = async (req, res) => {
   let Request = await db.sequelize.query(
     `SELECT * FROM dummy_transaksi WHERE unique_id = ? AND no_rek = ? ORDER BY reff DESC OFFSET ? * ? LIMIT ?`,
     {
-      replacements: [unique_id,no_rek,page,size,size],
+      replacements: [
+        unique_id,
+        no_rek,
+        page,
+        size,
+        size
+      ],
       type: db.sequelize.QueryTypes.SELECT,
     }
   );
