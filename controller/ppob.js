@@ -322,17 +322,14 @@ const PaymentStatus = async (req, res) => {
 
 const HistoryTransaction = async (req, res) => {
   let { unique_id, no_rek, page, size } = req.body;
-  if (!page) {
-    page = 0
-  }
+  page = (page * size) - size
   let Request = await db.sequelize.query(
-    `SELECT * FROM dummy_transaksi WHERE unique_id = ? AND no_rek = ? ORDER BY reff DESC OFFSET ? * ? LIMIT ?`,
+    `SELECT * FROM dummy_transaksi WHERE unique_id = ? AND no_rek = ? ORDER BY reff DESC OFFSET ? LIMIT ?`,
     {
       replacements: [
         unique_id,
         no_rek,
         page,
-        size,
         size
       ],
       type: db.sequelize.QueryTypes.SELECT,
