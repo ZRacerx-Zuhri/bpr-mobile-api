@@ -150,6 +150,7 @@ const BillInquiry = async (req, res) => {
     });
   }
 };
+
 const BillPayment = async (req, res) => {
   let { partner_tx_id, note, no_rek, nama_rek, produk_id, reff, amount, pin, user_id } = req.body;
   try {
@@ -286,10 +287,39 @@ const PaymentStatus = async (req, res) => {
   }
 };
 
+const HistoryTransaction = async (req, res) => {
+  let { unique_id, no_rek, page, size } = req.body;
+  if (!page) {
+    page = 0
+  }
+  let Request = await db.sequelize.query(
+    `SELECT * FROM dummy_transaksi WHERE unique_id = ? AND no_rek = ? ORDER BY reff DESC OFFSET ? * ? LIMIT ?`,
+    {
+      replacements: [unique_id,no_rek,page,size,size],
+      type: db.sequelize.QueryTypes.SELECT,
+    }
+  );
+  console.log(Request);
+  res.status(200).send({
+    code: "000",
+    status: "ok",
+    message: "Success",
+    data: Request,
+  });
+  try {
+  } catch (error) {
+    //--error server--//
+    console.log("erro get product", error);
+    res.send(error);
+  }
+};
+
+
 module.exports = {
   productPPOB,
   BillInquiry,
   BillPayment,
   PaymentStatus,
   productPPOBOy,
+  HistoryTransaction
 };
