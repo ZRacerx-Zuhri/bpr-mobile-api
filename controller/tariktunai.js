@@ -11,10 +11,8 @@
         return mpin;
     }
 
-  
-
   const request_token = async (req, res) => {
-    let { no_rek, nama_rek, ket_trans, reff, amount } = req.body;
+    let { pin, user_id, no_rek, nama_rek, ket_trans, reff, amount } = req.body;
     const token = generate_token()
     let d = new Date();
     let year = d.getFullYear();
@@ -44,55 +42,75 @@
     }
     let tgl_expired = `${year}${month}${day}${hour}${min}${sec}`
     try {
-        let [results, metadata] = await db.sequelize.query(
-                `INSERT INTO dummy_hold_dana(no_rek, nama_rek, tcode, ket_trans, reff, amount, tgl_trans, status) VALUES (?,?,?,?,?,?,?,'0')`,
+        let Auth = await db.sequelize.query(
+            `SELECT user_id FROM acct_ebpr WHERE mpin = ? AND user_id = ?`,
             {
-                replacements: [
-                    no_rek,
-                    nama_rek,
-                    "0200",
-                    ket_trans,
-                    reff,
-                    amount,
-                    tgl_trans
-                ],
+              replacements: [
+                encryptStringWithRsaPublicKey(pin, "./utility/privateKey.pem"),
+                user_id,
+              ],
+              type: db.sequelize.QueryTypes.SELECT,
             }
-        );
-        if (!metadata) {
-        res.status(200).send({
-          code: "099",
-          status: "ok",
-          message: "Gagal, Terjadi Kesalahan Hold Dana!!!",
-          data: null,
-        });
-      } else {
-        let [results, metadata] = await db.sequelize.query(
-                `INSERT INTO token(token, tgl_trans, tgl_expired, status) VALUES (?,?,?,'0')`,
-            {
-                replacements: [
-                    token,
-                    tgl_trans,
-                    tgl_expired
-                ],
-            }
-        );
-        console.log(metadata);
-        if (!metadata) {
+          );
+          // console.log("au", Auth);
+          if (!Auth.length) {
+            res.status(200).send({
+              code: "003",
+              status: "ok",
+              message: "Gagal, Terjadi Kesalahan!!!",
+              data: null,
+            });
+          } else {
+            let [results, metadata] = await db.sequelize.query(
+                    `INSERT INTO dummy_hold_dana(no_rek, nama_rek, tcode, ket_trans, reff, amount, tgl_trans, status) VALUES (?,?,?,?,?,?,?,'0')`,
+                {
+                    replacements: [
+                        no_rek,
+                        nama_rek,
+                        "0200",
+                        ket_trans,
+                        reff,
+                        amount,
+                        tgl_trans
+                    ],
+                }
+            );
+            if (!metadata) {
             res.status(200).send({
             code: "099",
             status: "ok",
-            message: "Gagal, Terjadi Kesalahan Membuat Token!!!",
+            message: "Gagal, Terjadi Kesalahan Hold Dana!!!",
             data: null,
             });
-        } else {
-            res.status(200).send({
-                code: "000",
-                status: "ok",
-                message: "Success",
-                data: { token, no_rek, nama_rek, reff, amount, tgl_trans, tgl_expired},
-              });
-        }
-      }
+            } else {
+                let [results, metadata] = await db.sequelize.query(
+                        `INSERT INTO token(token, tgl_trans, tgl_expired, status) VALUES (?,?,?,'0')`,
+                    {
+                        replacements: [
+                            token,
+                            tgl_trans,
+                            tgl_expired
+                        ],
+                    }
+                );
+                console.log(metadata);
+                if (!metadata) {
+                    res.status(200).send({
+                    code: "099",
+                    status: "ok",
+                    message: "Gagal, Terjadi Kesalahan Membuat Token!!!",
+                    data: null,
+                    });
+                } else {
+                    res.status(200).send({
+                        code: "000",
+                        status: "ok",
+                        message: "Success",
+                        data: { token, no_rek, nama_rek, reff, amount, tgl_trans, tgl_expired},
+                    });
+                }
+            }
+          }
     } catch (error) {
       console.log("error validasi", error);
   
