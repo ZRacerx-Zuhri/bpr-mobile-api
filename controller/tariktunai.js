@@ -22,8 +22,7 @@ const request_token = async (req, res) => {
       `SELECT unique_id, user_id, no_rek, nama_rek FROM acct_ebpr WHERE mpin = ? AND user_id = ? AND no_rek = ?`,
       {
         replacements: [
-        //   encryptStringWithRsaPublicKey(pin, "./utility/privateKey.pem"),
-          pin,
+          encryptStringWithRsaPublicKey(pin, "./utility/privateKey.pem"),
           user_id,
           no_rek,
         ],
