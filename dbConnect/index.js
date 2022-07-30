@@ -1,9 +1,13 @@
 const { Sequelize } = require("sequelize");
+const pg = require("pg");
+pg.defaults.parseInputDatesAsUTC = true;
+const { types } = pg;
 
 const sequelize = new Sequelize("db_middleware", "zuhri", "JuaraMobile", {
   host: "103.229.161.187",
   dialect: "postgres",
   port: 7432,
+
   pool: {
     max: 5,
     min: 0,

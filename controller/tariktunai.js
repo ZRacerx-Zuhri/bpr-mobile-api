@@ -1,4 +1,6 @@
 let db = require("../dbConnect/index");
+let moment = require("moment");
+const { encryptStringWithRsaPublicKey } = require("../utility/encrypt");
 
 const generate_token = () => {
   // generate token OY sementara
@@ -12,87 +14,103 @@ const generate_token = () => {
 };
 
 const request_token = async (req, res) => {
-  let { no_rek, nama_rek, ket_trans, reff, amount } = req.body;
+  let { no_rek, ket_trans, amount, pin, user_id } = req.body;
   const token = generate_token();
-  let d = new Date();
-  let year = d.getFullYear();
-  let month = d.getMonth();
-  if (month < 9) {
-    month = `0${month + 1}`;
-  } else {
-    month = `${month + 1}`;
-  }
-  let day = d.getDate();
-  let hour = d.getHours();
-  if (hour < 10) {
-    hour = `0${hour}`;
-  }
-  let min = d.getMinutes();
-  if (min < 10) {
-    min = `0${min}`;
-  }
-  let sec = d.getSeconds();
-  if (sec < 10) {
-    sec = `0${sec}`;
-  }
-  let tgl_trans = `${year}${month}${day}${hour}${min}${sec}`;
-  hour = parseInt(hour) + 1;
-  if (hour < 10) {
-    hour = `0${hour}`;
-  }
-  let tgl_expired = `${year}${month}${day}${hour}${min}${sec}`;
   try {
-    let [results, metadata] = await db.sequelize.query(
-      `INSERT INTO dummy_hold_dana(no_rek, nama_rek, tcode, ket_trans, reff, amount, tgl_trans, status) VALUES (?,?,?,?,?,?,?,'0')`,
+    let Auth = await db.sequelize.query(
+      `SELECT user_id, no_rek, nama_rek FROM acct_ebpr WHERE mpin = ? AND user_id = ? AND no_rek = ?`,
       {
         replacements: [
+          encryptStringWithRsaPublicKey(pin, "./utility/privateKey.pem"),
+          user_id,
           no_rek,
-          nama_rek,
-          "0200",
-          ket_trans,
-          reff,
-          amount,
-          tgl_trans,
         ],
+        type: db.sequelize.QueryTypes.SELECT,
       }
     );
-    if (!metadata) {
+    console.log();
+
+    if (!Auth.length) {
       res.status(200).send({
-        code: "099",
+        code: "003",
         status: "ok",
-        message: "Gagal, Terjadi Kesalahan Hold Dana!!!",
+        message: "Pin yang anda masukan Salah",
         data: null,
       });
     } else {
+      const dateTimeDb = await db.sequelize.query(`SELECT CURRENT_TIMESTAMP`, {
+        type: db.sequelize.QueryTypes.SELECT,
+      });
+      const tgl_trans = moment(dateTimeDb[0].current_timestamp).format();
+      const tgl_expired = moment(dateTimeDb[0].current_timestamp)
+        .add(1, "hours")
+        .format();
+
+      let reff = `TT/${Auth[0].nama_rek}/${moment(
+        dateTimeDb[0].current_timestamp
+      ).format("YYYYMMDD")}/${moment(
+        dateTimeDb[0].current_timestamp
+      ).valueOf()}`;
+
+      ket_trans = `${Auth[0].nama_rek} tarik tunai ${moment(
+        dateTimeDb[0].current_timestamp
+      ).format()} nominal ${amount}`;
+      console.log(reff);
+
       let [results, metadata] = await db.sequelize.query(
-        `INSERT INTO token(token, tgl_trans, tgl_expired, status) VALUES (?,?,?,'0')`,
+        `INSERT INTO dummy_hold_dana(no_rek, nama_rek, tcode, ket_trans, reff, amount,tgl_trans, status) VALUES (?,?,?,?,?,?,?,'0')`,
         {
-          replacements: [token, tgl_trans, tgl_expired],
+          replacements: [
+            Auth[0].no_rek,
+            Auth[0].nama_rek,
+            "0200",
+            ket_trans,
+            reff,
+            amount,
+            tgl_trans,
+          ],
         }
       );
-      console.log(metadata);
+      console.log("run...", results, metadata);
+
       if (!metadata) {
         res.status(200).send({
           code: "099",
           status: "ok",
-          message: "Gagal, Terjadi Kesalahan Membuat Token!!!",
+          message: "Gagal, Terjadi Kesalahan Hold Dana!!!",
           data: null,
         });
       } else {
-        res.status(200).send({
-          code: "000",
-          status: "ok",
-          message: "Success",
-          data: {
-            token,
-            no_rek,
-            nama_rek,
-            reff,
-            amount,
-            tgl_trans,
-            tgl_expired,
-          },
-        });
+        let [results, metadata] = await db.sequelize.query(
+          `INSERT INTO token(no_rek, token, tgl_trans, tgl_expired, status) VALUES (?,?,?,?,'0')`,
+          {
+            replacements: [Auth[0].no_rek, token, tgl_trans, tgl_expired],
+          }
+        );
+        console.log(metadata);
+        if (!metadata) {
+          res.status(200).send({
+            code: "099",
+            status: "ok",
+            message: "Gagal, Terjadi Kesalahan Membuat Token!!!",
+            data: null,
+          });
+        } else {
+          res.status(200).send({
+            code: "000",
+            status: "ok",
+            message: "Success",
+            data: {
+              token,
+              no_rek: Auth[0].no_rek,
+              nama_rek: Auth[0].nama_rek,
+              reff,
+              amount,
+              tgl_trans: moment(tgl_trans).format("MM/DD HH:mm:ss"),
+              tgl_expired: moment(tgl_expired).format("MM/DD HH:mm:ss"),
+            },
+          });
+        }
       }
     }
   } catch (error) {

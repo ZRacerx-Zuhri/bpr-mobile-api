@@ -83,7 +83,7 @@ const BillInquiry = async (req, res) => {
     if (Request.data.status.code === "000") {
       //--berhasil dapat list product update atau insert ke db --//
 
-      console.log("data", Request.data.data);
+      // console.log("data", Request.data.data);
       const payload = {
         tcode: "5000",
         no_rek: no_rek,
@@ -94,7 +94,7 @@ const BillInquiry = async (req, res) => {
         amount:
           Request.data.data.amount +
           parseInt(JSON.parse(Request.data.data.additional_data).admin_fee),
-        tgljam_trans: moment().format("YYYY-MM-DD HH:mm:ss"),
+        tgljam_trans: moment(new Date()).format("YYYY-MM-DD HH:mm:ss"),
       };
 
       let [results, metadata] = await db.sequelize.query(
@@ -218,13 +218,7 @@ const BillPayment = async (req, res) => {
           let [results, metadata] = await db.sequelize.query(
             `UPDATE dummy_transaksi SET status_rek = '1', tcode = '5001' WHERE no_rek = ? AND nama_rek = ? AND tcode = '5000' AND produk_id = ? AND reff = ? AND amount = ? AND status_rek = '0'`,
             {
-              replacements: [
-                no_rek,
-                nama_rek,
-                produk_id,
-                reff,
-                amount
-              ],
+              replacements: [no_rek, nama_rek, produk_id, reff, amount],
             }
           );
           if (!metadata) {
@@ -322,16 +316,11 @@ const PaymentStatus = async (req, res) => {
 
 const HistoryTransaction = async (req, res) => {
   let { unique_id, no_rek, page, size } = req.body;
-  page = (page * size) - size
+  page = page * size - size;
   let Request = await db.sequelize.query(
     `SELECT * FROM dummy_transaksi WHERE unique_id = ? AND no_rek = ? ORDER BY reff DESC OFFSET ? LIMIT ?`,
     {
-      replacements: [
-        unique_id,
-        no_rek,
-        page,
-        size
-      ],
+      replacements: [unique_id, no_rek, page, size],
       type: db.sequelize.QueryTypes.SELECT,
     }
   );
@@ -350,12 +339,11 @@ const HistoryTransaction = async (req, res) => {
   }
 };
 
-
 module.exports = {
   productPPOB,
   BillInquiry,
   BillPayment,
   PaymentStatus,
   productPPOBOy,
-  HistoryTransaction
+  HistoryTransaction,
 };
