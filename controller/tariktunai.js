@@ -1,5 +1,4 @@
 let db = require("../dbConnect/index");
-let moment = require("moment");
 
 const generate_token = () => {
   // generate token OY sementara
@@ -11,9 +10,6 @@ const generate_token = () => {
 
   return mpin;
 };
-
-// console.log(moment(new Date()).add(1, "hours").format());
-// console.log(new Date(moment(new Date()).add(1, "hours").format()));
 
 const request_token = async (req, res) => {
   let { no_rek, nama_rek, ket_trans, reff, amount } = req.body;
