@@ -15,14 +15,15 @@ const generate_token = () => {
 };
 
 const request_token = async (req, res) => {
-  let { no_rek, ket_trans, amount, pin, user_id } = req.body;
+  let { no_rek, amount, pin, user_id } = req.body;
   const token = generate_token();
   try {
     let Auth = await db.sequelize.query(
-      `SELECT user_id, no_rek, nama_rek FROM acct_ebpr WHERE mpin = ? AND user_id = ? AND no_rek = ?`,
+      `SELECT unique_id, user_id, no_rek, nama_rek FROM acct_ebpr WHERE mpin = ? AND user_id = ? AND no_rek = ?`,
       {
         replacements: [
-          encryptStringWithRsaPublicKey(pin, "./utility/privateKey.pem"),
+        //   encryptStringWithRsaPublicKey(pin, "./utility/privateKey.pem"),
+          pin,
           user_id,
           no_rek,
         ],
@@ -39,80 +40,150 @@ const request_token = async (req, res) => {
         data: null,
       });
     } else {
-      const dateTimeDb = await db.sequelize.query(`SELECT CURRENT_TIMESTAMP`, {
-        type: db.sequelize.QueryTypes.SELECT,
-      });
-      const tgl_trans = moment(dateTimeDb[0].current_timestamp).format();
-      const tgl_expired = moment(dateTimeDb[0].current_timestamp)
-        .add(1, "hours")
-        .format();
 
-      let reff = `TT/${Auth[0].nama_rek}/${moment(
-        dateTimeDb[0].current_timestamp
-      ).format("YYYYMMDD")}/${moment(
-        dateTimeDb[0].current_timestamp
-      ).valueOf()}`;
-
-      ket_trans = `${Auth[0].nama_rek} tarik tunai ${moment(
-        dateTimeDb[0].current_timestamp
-      ).format()} nominal ${amount}`;
-      console.log(reff);
-
-      let [results, metadata] = await db.sequelize.query(
-        `INSERT INTO dummy_hold_dana(no_rek, nama_rek, tcode, ket_trans, reff, amount,tgl_trans, status) VALUES (?,?,?,?,?,?,?,'0')`,
+      let check_saldo = await db.sequelize.query(
+        `SELECT saldo,saldo_min FROM dummy_rek_tabungan WHERE no_rek = ? AND nama_rek = ?`,
         {
           replacements: [
             Auth[0].no_rek,
-            Auth[0].nama_rek,
-            "0200",
-            ket_trans,
-            reff,
-            amount,
-            tgl_trans,
+            Auth[0].nama_rek
           ],
+          type: db.sequelize.QueryTypes.SELECT,
         }
       );
-      console.log("run...", results, metadata);
-
-      if (!metadata) {
+      if (!check_saldo.length) {
         res.status(200).send({
           code: "099",
           status: "ok",
-          message: "Gagal, Terjadi Kesalahan Hold Dana!!!",
+          message: "Gagal, Terjadi Kesalahan Pencarian Rekening!!!",
           data: null,
         });
       } else {
-        let [results, metadata] = await db.sequelize.query(
-          `INSERT INTO token(no_rek, token, tgl_trans, tgl_expired, status) VALUES (?,?,?,?,'0')`,
-          {
-            replacements: [Auth[0].no_rek, token, tgl_trans, tgl_expired],
-          }
-        );
-        console.log(metadata);
-        if (!metadata) {
-          res.status(200).send({
-            code: "099",
-            status: "ok",
-            message: "Gagal, Terjadi Kesalahan Membuat Token!!!",
-            data: null,
-          });
+        let saldo = parseInt(check_saldo[0].saldo);
+        let saldo_min = parseInt(check_saldo[0].saldo_min);
+        if (saldo - amount > saldo_min) {
+                const dateTimeDb = await db.sequelize.query(`SELECT CURRENT_TIMESTAMP`, {
+                type: db.sequelize.QueryTypes.SELECT,
+                });
+                const tgl_trans = moment(dateTimeDb[0].current_timestamp).format();
+                const tgl_expired = moment(dateTimeDb[0].current_timestamp)
+                .add(1, "hours")
+                .format();
+        
+                let reff = `TT/${Auth[0].nama_rek}/${moment(
+                dateTimeDb[0].current_timestamp
+                ).format("YYYYMMDD")}/${moment(
+                dateTimeDb[0].current_timestamp
+                ).valueOf()}`;
+        
+                ket_trans = `${Auth[0].nama_rek} tarik tunai ${moment(
+                dateTimeDb[0].current_timestamp
+                ).format()} nominal ${amount}`;
+                
+                let [results, metadata] = await db.sequelize.query(
+                `INSERT INTO dummy_hold_dana(no_rek, nama_rek, tcode, ket_trans, reff, amount,tgl_trans, status) VALUES (?,?,?,?,?,?,?,'0')`,
+                {
+                    replacements: [
+                        Auth[0].no_rek,
+                        Auth[0].nama_rek,
+                        "1000",
+                        ket_trans,
+                        reff,
+                        amount,
+                        tgl_trans,
+                    ],
+                }
+            );
+            console.log("run...", results, metadata);
+
+            if (!metadata) {
+                res.status(200).send({
+                code: "099",
+                status: "ok",
+                message: "Gagal, Terjadi Kesalahan Hold Dana!!!",
+                data: null,
+                });
+            } else {
+                let [results, metadata] = await db.sequelize.query(
+                `INSERT INTO dummy_transaksi(unique_id, no_rek, nama_rek, tcode, produk_id, ket_trans, reff, amount, tgljam_trans, status_rek) VALUES (?,?,?,?,?,?,?,?,?,'0')`,
+                {
+                  replacements: [
+                    Auth[0].unique_id,
+                    Auth[0].no_rek,
+                    Auth[0].nama_rek,
+                    "1000",
+                    "tariktunai",
+                    ket_trans,
+                    reff,
+                    amount,
+                    tgl_trans,
+                  ],
+                }
+              );
+              if (!metadata) {
+                res.status(200).send({
+                  code: "099",
+                  status: "ok",
+                  message: "Gagal, Terjadi Kesalahan Insert Transaksi!!!",
+                  data: null,
+                });
+              } else {
+                let [results, metadata] = await db.sequelize.query(
+                  `UPDATE dummy_rek_tabungan SET saldo = saldo - ? WHERE no_rek = ? AND status_rek = '1'`,
+                  {
+                    replacements: [amount, no_rek],
+                  }
+                );
+                if (!metadata) {
+                  res.status(200).send({
+                    code: "099",
+                    status: "ok",
+                    message: "Gagal, Terjadi Kesalahan Update Saldo!!!",
+                    data: null,
+                  });
+                } else {
+                    let [results, metadata] = await db.sequelize.query(
+                    `INSERT INTO token(no_rek, token, tgl_trans, tgl_expired, status) VALUES (?,?,?,?,'0')`,
+                    {
+                        replacements: [Auth[0].no_rek, token, tgl_trans, tgl_expired],
+                    }
+                    );
+                    console.log(metadata);
+                    if (!metadata) {
+                    res.status(200).send({
+                        code: "099",
+                        status: "ok",
+                        message: "Gagal, Terjadi Kesalahan Membuat Token!!!",
+                        data: null,
+                    });
+                    } else {
+                    res.status(200).send({
+                        code: "000",
+                        status: "ok",
+                        message: "Success",
+                        data: {
+                        token,
+                        no_rek: Auth[0].no_rek,
+                        nama_rek: Auth[0].nama_rek,
+                        reff,
+                        amount,
+                        tgl_trans: moment(tgl_trans).format("dddd,DD MMM YYYY, HH:mm:ss"),
+                        tgl_expired: moment(tgl_expired).format(
+                            "dddd,DD MMM YYYY, HH:mm:ss"
+                        ),
+                        },
+                    });
+                    }
+                }
+              }
+            } 
         } else {
-          res.status(200).send({
-            code: "000",
-            status: "ok",
-            message: "Success",
-            data: {
-              token,
-              no_rek: Auth[0].no_rek,
-              nama_rek: Auth[0].nama_rek,
-              reff,
-              amount,
-              tgl_trans: moment(tgl_trans).format("dddd,DD MMM YYYY, HH:mm:ss"),
-              tgl_expired: moment(tgl_expired).format(
-                "dddd,DD MMM YYYY, HH:mm:ss"
-              ),
-            },
-          });
+            res.status(200).send({
+                code: "099",
+                status: "ok",
+                message: "Gagal, Terjadi Kesalahan Kurangin Saldo!!!",
+                data: null,
+              });
         }
       }
     }
