@@ -80,11 +80,12 @@ const request_token = async (req, res) => {
                 ).format()} nominal ${amount}`;
                 
                 let [results, metadata] = await db.sequelize.query(
-                `INSERT INTO dummy_hold_dana(no_rek, nama_rek, tcode, ket_trans, reff, amount,tgl_trans, status) VALUES (?,?,?,?,?,?,?,'0')`,
+                `INSERT INTO dummy_hold_dana(no_rek, nama_rek, token, tcode, ket_trans, reff, amount,tgl_trans, status) VALUES (?,?,?,?,?,?,?,?,'0')`,
                 {
                     replacements: [
                         Auth[0].no_rek,
                         Auth[0].nama_rek,
+                        token,
                         "1000",
                         ket_trans,
                         reff,
