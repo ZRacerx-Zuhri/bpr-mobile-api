@@ -1,5 +1,6 @@
 let db = require("../dbConnect/index");
 let moment = require("moment");
+moment.locale("id");
 const { encryptStringWithRsaPublicKey } = require("../utility/encrypt");
 
 const generate_token = () => {
@@ -106,8 +107,10 @@ const request_token = async (req, res) => {
               nama_rek: Auth[0].nama_rek,
               reff,
               amount,
-              tgl_trans: moment(tgl_trans).format("MM/DD HH:mm:ss"),
-              tgl_expired: moment(tgl_expired).format("MM/DD HH:mm:ss"),
+              tgl_trans: moment(tgl_trans).format("dddd,DD MMM YYYY, HH:mm:ss"),
+              tgl_expired: moment(tgl_expired).format(
+                "dddd,DD MMM YYYY, HH:mm:ss"
+              ),
             },
           });
         }
