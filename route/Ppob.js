@@ -4,8 +4,7 @@ const {
   BillInquiry,
   BillPayment,
   PaymentStatus,
-  productPPOBOy,
-  HistoryTransaction
+  productPPOBOy
 } = require("../controller/ppob");
 
 const { VerifyToken } = require("../authMiddleware/user");
@@ -21,6 +20,5 @@ router.post(
 );
 router.post("/payment", BillPayment);
 router.post("/status", PaymentStatus);
-router.post("/history", HistoryTransaction);
 
 module.exports = router;

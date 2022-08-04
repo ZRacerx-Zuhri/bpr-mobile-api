@@ -255,4 +255,29 @@ const Login = async (req, res) => {
   }
 };
 
-module.exports = { createUser, validasi, aktivasi, Login, saldo };
+const HistoryTransaction = async (req, res) => {
+  let { unique_id, no_rek, tcode, page } = req.body;
+  page = page * 10 - 10;
+  let Request = await db.sequelize.query(
+    `SELECT * FROM dummy_transaksi WHERE unique_id = ? AND no_rek = ? AND tcode = ? ORDER BY tgljam_trans DESC OFFSET ? LIMIT 10`,
+    {
+      replacements: [unique_id, no_rek, tcode, page],
+      type: db.sequelize.QueryTypes.SELECT,
+    }
+  );
+  console.log(Request);
+  res.status(200).send({
+    code: "000",
+    status: "ok",
+    message: "Success",
+    data: Request,
+  });
+  try {
+  } catch (error) {
+    //--error server--//
+    console.log("erro get product", error);
+    res.send(error);
+  }
+};
+
+module.exports = { createUser, validasi, aktivasi, Login, HistoryTransaction, saldo };
