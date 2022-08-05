@@ -314,36 +314,10 @@ const PaymentStatus = async (req, res) => {
   }
 };
 
-const HistoryTransaction = async (req, res) => {
-  let { unique_id, no_rek, page, size } = req.body;
-  page = page * size - size;
-  let Request = await db.sequelize.query(
-    `SELECT * FROM dummy_transaksi WHERE unique_id = ? AND no_rek = ? ORDER BY reff DESC OFFSET ? LIMIT ?`,
-    {
-      replacements: [unique_id, no_rek, page, size],
-      type: db.sequelize.QueryTypes.SELECT,
-    }
-  );
-  console.log(Request);
-  res.status(200).send({
-    code: "000",
-    status: "ok",
-    message: "Success",
-    data: Request,
-  });
-  try {
-  } catch (error) {
-    //--error server--//
-    console.log("erro get product", error);
-    res.send(error);
-  }
-};
-
 module.exports = {
   productPPOB,
   BillInquiry,
   BillPayment,
   PaymentStatus,
   productPPOBOy,
-  HistoryTransaction,
 };
