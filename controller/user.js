@@ -32,7 +32,6 @@ const createUser = async (req, res) => {
   }
 };
 
-
 const saldo = async (req, res) => {
   let { no_rek, nama_rek } = req.body;
   try {
@@ -180,7 +179,7 @@ const aktivasi = async (req, res) => {
 
 const Login = async (req, res) => {
   let { user_id, password } = req.body;
-  console.log("tes...");
+  // console.log("tes...");
   try {
     let Password = encryptStringWithRsaPublicKey(
       password,
