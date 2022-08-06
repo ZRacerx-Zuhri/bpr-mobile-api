@@ -264,7 +264,7 @@ const HistoryTransaction = async (req, res) => {
       type: db.sequelize.QueryTypes.SELECT,
     }
   );
-  console.log(Request);
+  // console.log(Request);
   res.status(200).send({
     code: "000",
     status: "ok",
@@ -279,4 +279,11 @@ const HistoryTransaction = async (req, res) => {
   }
 };
 
-module.exports = { createUser, validasi, aktivasi, Login, HistoryTransaction, saldo };
+module.exports = {
+  createUser,
+  validasi,
+  aktivasi,
+  Login,
+  HistoryTransaction,
+  saldo,
+};
