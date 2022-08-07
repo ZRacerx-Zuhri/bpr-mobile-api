@@ -7,8 +7,7 @@ var path = require("path");
 var fs = require("fs");
 let db = require("../dbConnect/index");
 let jwt = require("jsonwebtoken");
-const { log } = require("console");
-// const { Redis } = require("../utility/redis");
+
 const moment = require("moment");
 
 const createUser = async (req, res) => {
@@ -187,7 +186,18 @@ const Login = async (req, res) => {
       "./utility/privateKey.pem"
     );
     let Request = await db.sequelize.query(
-      `SELECT * FROM  acct_ebpr ac INNER JOIN dummy_rek_tabungan rk on ac.no_rek = rk.no_rek  WHERE password = ? AND user_id = ?`,
+      `SELECT ac.bpr_id,
+      ac.no_rek,
+      ac.nama_rek,
+      ac.no_hp,
+      ac.nama,
+      ac.user_id,
+      ac."password",
+      ac.email,
+      kd.bpr_logo,
+      ac.unique_id
+      FROM  acct_ebpr ac INNER JOIN dummy_rek_tabungan rk on ac.no_rek = rk.no_rek 
+      INNER JOIN kd_bpr kd on ac.bpr_id = kd.bpr_id WHERE password = ? AND user_id = ?`,
       {
         replacements: [Password, user_id],
         type: db.sequelize.QueryTypes.SELECT,
@@ -258,21 +268,37 @@ const Login = async (req, res) => {
 const HistoryTransaction = async (req, res) => {
   let { unique_id, no_rek, tcode, page } = req.body;
   page = page * 10 - 10;
-  let Request = await db.sequelize.query(
-    `SELECT DT.no_rek, DT.nama_rek, DT.tcode, DT.ket_trans, DT.reff, DT.amount, T.token, T.status, T.tgl_trans, T.tgl_expired FROM dummy_transaksi AS DT INNER JOIN token AS T ON DT.tgljam_trans = T.tgl_trans WHERE unique_id = ? AND DT.no_rek = ? AND tcode = ? ORDER BY tgljam_trans DESC OFFSET ? LIMIT 10`,
-    {
-      replacements: [unique_id, no_rek, tcode, page],
-      type: db.sequelize.QueryTypes.SELECT,
-    }
-  );
-
-  res.status(200).send({
-    code: "000",
-    status: "ok",
-    message: "Success",
-    data: Request,
-  });
   try {
+    let Request = await db.sequelize.query(
+      `SELECT DT.no_rek, DT.nama_rek, DT.tcode, DT.ket_trans, DT.reff, DT.amount, T.token, T.status, T.tgl_trans, T.tgl_expired FROM dummy_transaksi AS DT INNER JOIN token AS T ON DT.tgljam_trans = T.tgl_trans WHERE unique_id = ? AND DT.no_rek = ? AND tcode = ? ORDER BY tgljam_trans DESC OFFSET ? LIMIT 10`,
+      {
+        replacements: [unique_id, no_rek, tcode, page],
+        type: db.sequelize.QueryTypes.SELECT,
+      }
+    );
+
+    if (!Request.length) {
+      res.status(200).send({
+        code: "001",
+        status: "ok",
+        message: "Riwayat Transaksi Tidak Ada...",
+        data: null,
+      });
+    } else {
+      let CopyData = Request.map((val) => ({
+        ...val,
+        tgl_trans: moment(val.tgl_trans).format("dddd, DD MMM YYYY, HH:mm:ss"),
+        tgl_expired: moment(val.tgl_expired).format(
+          "dddd, DD MMM YYYY, HH:mm:ss"
+        ),
+      }));
+      res.status(200).send({
+        code: "000",
+        status: "ok",
+        message: "Success",
+        data: CopyData,
+      });
+    }
   } catch (error) {
     //--error server--//
     console.log("erro get product", error);

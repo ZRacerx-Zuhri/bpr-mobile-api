@@ -152,18 +152,6 @@ const BillInquiry = async (req, res) => {
   }
 };
 
-let data = {
-  additional_data:
-    '{"customer_id":"0821555","customer_name":"CUSTOMER NAME","admin_fee":"2500"}',
-  amount: 5720,
-  customer_id: "0821555",
-  customer_name: "CUSTOMER NAME",
-  nama_produk: "Pulsa Simpati 5.000",
-  partner_tx_id: "INV/20220725/1658710154166",
-  product_id: "sim5",
-  tx_id: "6a004280-5225-4ae1-9399-fd7fd1859112",
-};
-
 const BillPayment = async (req, res) => {
   let {
     partner_tx_id,
@@ -216,9 +204,16 @@ const BillPayment = async (req, res) => {
         let saldo_min = parseInt(check_saldo[0].saldo_min);
         if (saldo - amount > saldo_min) {
           let [results, metadata] = await db.sequelize.query(
-            `UPDATE dummy_transaksi SET unique_id = ? status_rek = '1', tcode = '5001' WHERE no_rek = ? AND nama_rek = ? AND tcode = '5000' AND produk_id = ? AND reff = ? AND amount = ? AND status_rek = '0'`,
+            `UPDATE dummy_transaksi SET unique_id = ? status_rek = '1' tcode = '5001' WHERE no_rek = ? AND nama_rek = ? AND tcode = '5000' AND produk_id = ? AND reff = ? AND amount = ? AND status_rek = '0'`,
             {
-              replacements: [Auth[0].unique_id, no_rek, nama_rek, produk_id, reff, amount],
+              replacements: [
+                Auth[0].unique_id,
+                no_rek,
+                nama_rek,
+                produk_id,
+                reff,
+                amount,
+              ],
             }
           );
           if (!metadata) {
