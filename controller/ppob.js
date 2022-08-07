@@ -216,7 +216,7 @@ const BillPayment = async (req, res) => {
         let saldo_min = parseInt(check_saldo[0].saldo_min);
         if (saldo - amount > saldo_min) {
           let [results, metadata] = await db.sequelize.query(
-            `UPDATE dummy_transaksi SET unique_id = ? status_rek = '1', tcode = '5001' WHERE no_rek = ? AND nama_rek = ? AND tcode = '5000' AND produk_id = ? AND reff = ? AND amount = ? AND status_rek = '0'`,
+            `UPDATE dummy_transaksi SET unique_id = ?, status_rek = '1', tcode = '5001' WHERE no_rek = ? AND nama_rek = ? AND tcode = '5000' AND produk_id = ? AND reff = ? AND amount = ? AND status_rek = '0'`,
             {
               replacements: [Auth[0].unique_id, no_rek, nama_rek, produk_id, reff, amount],
             }
