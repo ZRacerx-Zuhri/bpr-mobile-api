@@ -269,6 +269,14 @@ const HistoryTransaction = async (req, res) => {
   let { unique_id, no_rek, tcode, page } = req.body;
   page = page * 10 - 10;
   try {
+    let jumlah_page = await db.sequelize.query(
+      `SELECT COUNT(no_rek) AS jumlah_page FROM dummy_transaksi WHERE unique_id = ? AND no_rek = ? AND tcode = ?`,
+      {
+        replacements: [unique_id, no_rek, tcode, page],
+        type: db.sequelize.QueryTypes.SELECT,
+      }
+    );
+
     let Request = await db.sequelize.query(
       `SELECT DT.no_rek, DT.nama_rek, DT.tcode, DT.ket_trans, DT.reff, DT.amount, T.token, T.status, T.tgl_trans, T.tgl_expired FROM dummy_transaksi AS DT INNER JOIN token AS T ON DT.tgljam_trans = T.tgl_trans WHERE unique_id = ? AND DT.no_rek = ? AND tcode = ? ORDER BY tgljam_trans DESC OFFSET ? LIMIT 10`,
       {
@@ -292,6 +300,9 @@ const HistoryTransaction = async (req, res) => {
           "dddd, DD MMM YYYY, HH:mm:ss"
         ),
       }));
+      CopyData.push({
+        TotalPage: Math.ceil(parseInt(jumlah_page[0].jumlah_page) / 10),
+      });
       res.status(200).send({
         code: "000",
         status: "ok",
