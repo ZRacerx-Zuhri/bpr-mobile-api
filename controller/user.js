@@ -9,6 +9,7 @@ let db = require("../dbConnect/index");
 let jwt = require("jsonwebtoken");
 const { log } = require("console");
 // const { Redis } = require("../utility/redis");
+const moment = require("moment");
 
 const createUser = async (req, res) => {
   let { pin } = req.body;
@@ -264,7 +265,7 @@ const HistoryTransaction = async (req, res) => {
       type: db.sequelize.QueryTypes.SELECT,
     }
   );
-  // console.log(Request);
+
   res.status(200).send({
     code: "000",
     status: "ok",
