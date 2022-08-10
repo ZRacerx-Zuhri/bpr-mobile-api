@@ -269,18 +269,25 @@ const HistoryTransaction = async (req, res) => {
   let { unique_id, no_rek, tcode, page } = req.body;
   page = page * 10 - 10;
   try {
+    let cek_tgl = moment()
+                  .subtract(24, "hours")
+                  .format("YYYY-MM-DD HH:mm:ss")
     let jumlah_page = await db.sequelize.query(
-      `SELECT COUNT(no_rek) AS jumlah_page FROM dummy_transaksi WHERE unique_id = ? AND no_rek = ? AND tcode = ?`,
+      `SELECT COUNT(*) AS jumlah_page FROM dummy_transaksi WHERE unique_id = ? AND no_rek = ? AND tgljam_trans > ? AND tcode = ?`,
       {
-        replacements: [unique_id, no_rek, tcode, page],
+        replacements: [unique_id, no_rek, cek_tgl, tcode],
         type: db.sequelize.QueryTypes.SELECT,
       }
     );
 
     let Request = await db.sequelize.query(
-      `SELECT DT.no_rek, DT.nama_rek, DT.tcode, DT.ket_trans, DT.reff, DT.amount, T.token, T.status, T.tgl_trans, T.tgl_expired FROM dummy_transaksi AS DT INNER JOIN token AS T ON DT.tgljam_trans = T.tgl_trans WHERE unique_id = ? AND DT.no_rek = ? AND tcode = ? ORDER BY tgljam_trans DESC OFFSET ? LIMIT 10`,
+      `SELECT DT.no_rek, DT.nama_rek, DT.tcode, DT.ket_trans, DT.reff, DT.amount, T.token, T.status, T.tgl_trans, T.tgl_expired
+      FROM dummy_transaksi AS DT INNER JOIN token AS T ON DT.tgljam_trans = T.tgl_trans
+      WHERE unique_id = ? AND DT.no_rek = ? AND tcode = ? AND tgljam_trans > ?
+      ORDER BY tgljam_trans DESC
+      OFFSET ? LIMIT 10`,
       {
-        replacements: [unique_id, no_rek, tcode, page],
+        replacements: [unique_id, no_rek, tcode, cek_tgl, page],
         type: db.sequelize.QueryTypes.SELECT,
       }
     );
