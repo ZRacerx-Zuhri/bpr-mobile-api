@@ -308,6 +308,7 @@ const HistoryTransaction = async (req, res) => {
         tgl_expired: moment(val.tgl_expired).format(
           "dddd, DD MMM YYYY, HH:mm:ss"
         ),
+        expired: moment(dateTimeDb[0].now).isAfter(val.tgl_expired),
       }));
       CopyData.push({
         TotalPage: Math.ceil(parseInt(jumlah_page[0].jumlah_page) / 10),
