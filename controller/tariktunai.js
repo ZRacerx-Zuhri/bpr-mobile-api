@@ -2,6 +2,7 @@ let db = require("../dbConnect/index");
 let moment = require("moment");
 moment.locale("id");
 const { encryptStringWithRsaPublicKey } = require("../utility/encrypt");
+const { date } = require("../utility/getDate");
 
 const generate_token = () => {
   // generate token OY sementara
@@ -56,25 +57,20 @@ const request_token = async (req, res) => {
         let saldo = parseInt(check_saldo[0].saldo);
         let saldo_min = parseInt(check_saldo[0].saldo_min);
         if (saldo - amount > saldo_min) {
-          const dateTimeDb = await db.sequelize.query(
-            `SELECT CURRENT_TIMESTAMP`,
-            {
-              type: db.sequelize.QueryTypes.SELECT,
-            }
-          );
-          const tgl_trans = moment(dateTimeDb[0].current_timestamp).format();
-          const tgl_expired = moment(dateTimeDb[0].current_timestamp)
+          const dateTimeDb = await date()
+          const tgl_trans = moment(dateTimeDb[0].now).format();
+          const tgl_expired = moment(dateTimeDb[0].now)
             .add(1, "hours")
             .format();
 
           let reff = `TT/${Auth[0].nama_rek}/${moment(
-            dateTimeDb[0].current_timestamp
+            dateTimeDb[0].now
           ).format("YYYYMMDD")}/${moment(
-            dateTimeDb[0].current_timestamp
+            dateTimeDb[0].now
           ).valueOf()}`;
 
           ket_trans = `${Auth[0].nama_rek} tarik tunai ${moment(
-            dateTimeDb[0].current_timestamp
+            dateTimeDb[0].now
           ).format()} nominal ${amount}`;
 
           let [results, metadata] = await db.sequelize.query(

@@ -2,6 +2,7 @@ const {
   encryptStringWithRsaPublicKey,
   decryptStringWithRsaPrivateKey,
 } = require("../utility/encrypt");
+const { date } = require("../utility/getDate");
 var crypto = require("crypto");
 var path = require("path");
 var fs = require("fs");
@@ -269,7 +270,10 @@ const HistoryTransaction = async (req, res) => {
   let { unique_id, no_rek, tcode, page } = req.body;
   page = page * 10 - 10;
   try {
-    let cek_tgl = moment().subtract(24, "hours").format("YYYY-MM-DD HH:mm:ss");
+    const dateTimeDb = await date();
+    let cek_tgl = moment(dateTimeDb[0].now)
+      .subtract(24, "hours")
+      .format("YYYY-MM-DD HH:mm:ss");
     let jumlah_page = await db.sequelize.query(
       `SELECT COUNT(*) AS jumlah_page FROM dummy_transaksi WHERE unique_id = ? AND no_rek = ? AND tgljam_trans > ? AND tcode = ?`,
       {

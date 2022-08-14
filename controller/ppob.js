@@ -2,6 +2,7 @@ const axios = require("../Services/API");
 const db = require("../dbConnect/index");
 const moment = require("moment");
 const { encryptStringWithRsaPublicKey } = require("../utility/encrypt");
+const { date } = require("../utility/getDate");
 
 const productPPOBOy = async (req, res) => {
   try {
@@ -62,7 +63,8 @@ const BillInquiry = async (req, res) => {
     no_rek,
     customerName,
   } = req.body;
-  partner_tx_id = `INV/${moment(new Date()).format(
+  const dateTimeDb = await date()
+  partner_tx_id = `INV/${moment(dateTimeDb[0].now).format(
     "YYYYMMDD"
   )}/${new Date().getTime()}`;
   try {
@@ -94,7 +96,7 @@ const BillInquiry = async (req, res) => {
         amount:
           Request.data.data.amount +
           parseInt(JSON.parse(Request.data.data.additional_data).admin_fee),
-        tgljam_trans: moment(new Date()).format("YYYY-MM-DD HH:mm:ss"),
+        tgljam_trans: moment(dateTimeDb[0].now).format("YYYY-MM-DD HH:mm:ss"),
       };
 
       let [results, metadata] = await db.sequelize.query(
