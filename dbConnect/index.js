@@ -1,11 +1,11 @@
 const { Sequelize } = require("sequelize");
 
-const sequelize = new Sequelize("db_middleware", "zuhri", "JuaraMobile", {
-  host: "127.0.0.1",
+const sequelize = new Sequelize("db_middleware", "ibpr", "JuaraBersama", {
+  host: "103.229.161.189",
   dialect: "postgres",
-  port: 5432,
+  port: 7755,
   pool: {
-    max: 5,
+    max: 10000,
     min: 0,
     idle: 10000,
   },
