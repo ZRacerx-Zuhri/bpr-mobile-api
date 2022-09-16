@@ -15,7 +15,7 @@ const sequelize = new Sequelize(name, username, pass, {
     min: 0,
     idle: 10000,
   },
-  dialectOptions: { connectionTimeoutMillis: 1000 },
+  dialectOptions: { connectionTimeoutMillis: 600000 },
 });
 
 module.exports = { sequelize };
