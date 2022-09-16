@@ -63,7 +63,7 @@ const BillInquiry = async (req, res) => {
     no_rek,
     customerName,
   } = req.body;
-  const dateTimeDb = await date()
+  const dateTimeDb = await date();
   partner_tx_id = `INV/${moment(dateTimeDb[0].now).format(
     "YYYYMMDD"
   )}/${new Date().getTime()}`;
