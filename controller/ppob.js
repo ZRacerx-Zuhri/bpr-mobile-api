@@ -109,7 +109,7 @@ const BillInquiry = async (req, res) => {
             payload.produk_id,
             payload.ket_trans,
             payload.reff,
-            payload.amount,
+            parseInt(payload.amount),
             payload.tgljam_trans,
           ],
         }
