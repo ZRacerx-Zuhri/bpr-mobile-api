@@ -75,73 +75,73 @@ const BillInquiry = async (req, res) => {
       amount,
     });
 
-    let Request = await axios.post("/api/v2/bill", {
-      customer_id,
-      product_id,
-      partner_tx_id,
+    // let Request = await axios.post("/api/v2/bill", {
+    //   customer_id,
+    //   product_id,
+    //   partner_tx_id,
+    //   amount,
+    // });
+
+    // if (Request.data.status.code === "000") {
+    //--berhasil dapat list product update atau insert ke db --//
+
+    // console.log("data", Request.data.data);
+    const payload = {
+      tcode: "5000",
+      no_rek: no_rek,
+      nama_rek: customerName,
+      produk_id: product_id,
+      ket_trans: `${customerName} ${nama_produk}`,
+      reff: partner_tx_id,
       amount,
-    });
+      // Request.data.data.amount +
+      // parseInt(JSON.parse(Request.data.data.additional_data).admin_fee),
+      tgljam_trans: moment(dateTimeDb[0].now).format("YYYY-MM-DD HH:mm:ss"),
+    };
 
-    if (Request.data.status.code === "000") {
-      //--berhasil dapat list product update atau insert ke db --//
-
-      // console.log("data", Request.data.data);
-      const payload = {
-        tcode: "5000",
-        no_rek: no_rek,
-        nama_rek: customerName,
-        produk_id: Request.data.data.product_id,
-        ket_trans: `${customerName} ${nama_produk} ${Request.data.data.customer_name}`,
-        reff: Request.data.data.partner_tx_id,
-        amount:
-          Request.data.data.amount +
-          parseInt(JSON.parse(Request.data.data.additional_data).admin_fee),
-        tgljam_trans: moment(dateTimeDb[0].now).format("YYYY-MM-DD HH:mm:ss"),
-      };
-
-      let [results, metadata] = await db.sequelize.query(
-        `INSERT INTO dummy_transaksi(no_rek, nama_rek, tcode, produk_id, ket_trans, reff, amount, tgljam_trans, status_rek) VALUES (?,?,?,?,?,?,?,?,'0')`,
-        {
-          replacements: [
-            payload.no_rek,
-            payload.nama_rek,
-            payload.tcode,
-            payload.produk_id,
-            payload.ket_trans,
-            payload.reff,
-            parseInt(payload.amount),
-            payload.tgljam_trans,
-          ],
-        }
-      );
-
-      // console.log(metadata);
-
-      if (!metadata) {
-        res.status(200).send({
-          code: "099",
-          status: "ok",
-          message: "Gagal, Terjadi Kesalahan Insert Transaksi!!!",
-          data: null,
-        });
-      } else {
-        res.status(200).send({
-          code: "000",
-          status: "ok",
-          message: "Success",
-          data: { ...Request.data.data, nama_produk, nama_rek: customerName },
-        });
+    let [results, metadata] = await db.sequelize.query(
+      `INSERT INTO dummy_transaksi(no_rek, nama_rek, tcode, produk_id, ket_trans, reff, amount, tgljam_trans, status_rek) VALUES (?,?,?,?,?,?,?,?,'0')`,
+      {
+        replacements: [
+          payload.no_rek,
+          payload.nama_rek,
+          payload.tcode,
+          payload.produk_id,
+          payload.ket_trans,
+          payload.reff,
+          parseInt(payload.amount),
+          payload.tgljam_trans,
+        ],
       }
-    } else {
-      //--status gagal api--//
+    );
 
+    // console.log(metadata);
+
+    if (!metadata) {
       res.status(200).send({
-        code: Request.data.status.code,
+        code: "099",
         status: "ok",
-        message: Request.data.status.message,
+        message: "Gagal, Terjadi Kesalahan Insert Transaksi!!!",
         data: null,
       });
+    } else {
+      res.status(200).send({
+        code: "000",
+        status: "ok",
+        message: "Success",
+        data: { ...Request.data.data, nama_produk, nama_rek: customerName },
+      });
     }
+    // } else {
+    //   //--status gagal api--//
+
+    //   res.status(200).send({
+    //     code: Request.data.status.code,
+    //     status: "ok",
+    //     message: Request.data.status.message,
+    //     data: null,
+    //   });
+    // }
   } catch (error) {
     //--error server--//
     console.log("error inquiry", error);
@@ -240,29 +240,29 @@ const BillPayment = async (req, res) => {
                 data: null,
               });
             } else {
-              let Request = await axios.post("/api/v2/bill/payment", {
-                partner_tx_id,
-                note,
+              // let Request = await axios.post("/api/v2/bill/payment", {
+              //   partner_tx_id,
+              //   note,
+              // });
+              // if (Request.data.status.code === "102") {
+              //--berhasil dapat list product update atau insert ke db --//
+              console.log("Success");
+              res.status(200).send({
+                code: "000",
+                status: "ok",
+                message: `Transaksi sudah diproses \n Cek saldo pulsa anda`,
+                data: { ...metadata },
               });
-              if (Request.data.status.code === "102") {
-                //--berhasil dapat list product update atau insert ke db --//
-                console.log("Success");
-                res.status(200).send({
-                  code: "000",
-                  status: "ok",
-                  message: `Transaksi sudah diproses \n Cek saldo pulsa anda`,
-                  data: { ...Request.data.data },
-                });
-              } else {
-                //--status gagal api--//
-                console.log("Gagal");
-                res.status(200).send({
-                  code: "099",
-                  status: "ok",
-                  message: Request.data.status.message,
-                  data: { ...Request.data.data },
-                });
-              }
+              // } else {
+              //   //--status gagal api--//
+              //   console.log("Gagal");
+              //   res.status(200).send({
+              //     code: "099",
+              //     status: "ok",
+              //     message: Request.data.status.message,
+              //     data: { ...Request.data.data },
+              //   });
+              // }
             }
           }
         } else {
