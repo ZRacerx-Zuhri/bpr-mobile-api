@@ -129,7 +129,7 @@ const BillInquiry = async (req, res) => {
         code: "000",
         status: "ok",
         message: "Success",
-        data: { ...Request.data.data, nama_produk, nama_rek: customerName },
+        data: { nama_produk, nama_rek: customerName },
       });
     }
     // } else {
@@ -239,29 +239,29 @@ const BillPayment = async (req, res) => {
                 data: null,
               });
             } else {
-              // let Request = await axios.post("/api/v2/bill/payment", {
-              //   partner_tx_id,
-              //   note,
-              // });
-              // if (Request.data.status.code === "102") {
-              //--berhasil dapat list product update atau insert ke db --//
-              console.log("Success");
-              res.status(200).send({
-                code: "000",
-                status: "ok",
-                message: `Transaksi sudah diproses \n Cek saldo pulsa anda`,
-                data: { ...metadata },
+              let Request = await axios.post("/api/v2/bill/payment", {
+                partner_tx_id,
+                note,
               });
-              // } else {
-              //   //--status gagal api--//
-              //   console.log("Gagal");
-              //   res.status(200).send({
-              //     code: "099",
-              //     status: "ok",
-              //     message: Request.data.status.message,
-              //     data: { ...Request.data.data },
-              //   });
-              // }
+              if (Request.data.status.code === "102") {
+                //--berhasil dapat list product update atau insert ke db --//
+                console.log("Success");
+                res.status(200).send({
+                  code: "000",
+                  status: "ok",
+                  message: `Transaksi sudah diproses \n Cek saldo pulsa anda`,
+                  data: { ...Request.data.data },
+                });
+              } else {
+                //--status gagal api--//
+                console.log("Gagal");
+                res.status(200).send({
+                  code: "099",
+                  status: "ok",
+                  message: Request.data.status.message,
+                  data: { ...Request.data.data },
+                });
+              }
             }
           }
         } else {
