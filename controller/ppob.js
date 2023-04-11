@@ -136,6 +136,8 @@ const BillInquiry = async (req, res) => {
           customer_id,
           admin: 2500,
           partner_tx_id,
+          product_id,
+          no_rek,
         },
       });
     }
