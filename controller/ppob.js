@@ -129,7 +129,13 @@ const BillInquiry = async (req, res) => {
         code: "000",
         status: "ok",
         message: "Success",
-        data: { nama_produk, nama_rek: customerName },
+        data: {
+          amount,
+          nama_produk,
+          nama_rek: customerName,
+          customer_id,
+          admin: 2500,
+        },
       });
     }
     // } else {
