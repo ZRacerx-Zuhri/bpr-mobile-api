@@ -249,29 +249,37 @@ const BillPayment = async (req, res) => {
                 data: null,
               });
             } else {
-              let Request = await axios.post("/api/v2/bill/payment", {
-                partner_tx_id,
-                note,
+              // let Request = await axios.post("/api/v2/bill/payment", {
+              //   partner_tx_id,
+              //   note,
+              // });
+              // if (Request.data.status.code === "102") {
+              //--berhasil dapat list product update atau insert ke db --//
+              console.log("Success");
+              res.status(200).send({
+                code: "000",
+                status: "ok",
+                message: `Transaksi sudah diproses \n Cek saldo pulsa anda`,
+                data: {
+                  partner_tx_id,
+                  note,
+                  no_rek,
+                  nama_rek,
+                  produk_id,
+                  reff,
+                  amount,
+                },
               });
-              if (Request.data.status.code === "102") {
-                //--berhasil dapat list product update atau insert ke db --//
-                console.log("Success");
-                res.status(200).send({
-                  code: "000",
-                  status: "ok",
-                  message: `Transaksi sudah diproses \n Cek saldo pulsa anda`,
-                  data: { ...Request.data.data },
-                });
-              } else {
-                //--status gagal api--//
-                console.log("Gagal");
-                res.status(200).send({
-                  code: "099",
-                  status: "ok",
-                  message: Request.data.status.message,
-                  data: { ...Request.data.data },
-                });
-              }
+              // } else {
+              //   //--status gagal api--//
+              //   console.log("Gagal");
+              //   res.status(200).send({
+              //     code: "099",
+              //     status: "ok",
+              //     message: Request.data.status.message,
+              //     data: { ...Request.data.data },
+              //   });
+              // }
             }
           }
         } else {
