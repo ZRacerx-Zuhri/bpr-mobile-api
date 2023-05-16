@@ -7,6 +7,7 @@ var crypto = require("crypto");
 var path = require("path");
 var fs = require("fs");
 let db = require("../dbConnect/index");
+let db1 = require("../dbConnect/ibprdev");
 let jwt = require("jsonwebtoken");
 
 const moment = require("moment");
@@ -406,7 +407,7 @@ const inquiry_account = async (req, res) => {
 
 // API untuk Inquiry Account
 const validate_user = async (req, res) => {
-    let {no_rek, no_hp, bpr_id, status, userid, password, tgl_trans, tgl_transmis, rrn} = req.body;
+    let {no_rek, no_hp, bpr_id, status, user_id, password, tgl_trans, tgl_transmis, rrn} = req.body;
     try {
         console.log("REQ BODY VALIDATE");
         console.log(req.body);
@@ -426,29 +427,36 @@ const validate_user = async (req, res) => {
             });
         } else {
             let [results, metadata] = await db1.sequelize.query(
-                `UPDATE acct_ebpr SET userid = ?, password = ? WHERE no_hp = ? AND bpr_id = ? AND status != '6'`,
+                `UPDATE acct_ebpr SET user_id = ?, password = ? WHERE no_hp = ? AND bpr_id = ? AND status != '6'`,
                 {
-                    replacements: [userid, password, no_hp, bpr_id],
+                    replacements: [user_id, password, no_hp, bpr_id],
                 }
             );
-            const trx_code = "0100"
-            const data = {no_rek, no_hp, bpr_id, trx_code, status, tgl_trans, rrn}
-            const request = await connect_axios(bpr[0].gateway,"gateway_bpr/inquiry_account",data)
-            if (request.code !== "000") {
-                    res.status(200).send(request);
-            } else {
-                response = request.data
-                if (response.status == "0") {
-                    response.status = "Akun telah dinon-aktifkan"
-                } else if (response.status == "1") {
-                    response.status = "Akun telah diaktifkan"
-                } else if (response.status == "2") {
-                    response.status = "Akun telah diblokir"
-                } else {
-                    response.status = "Status tidak diketahui"
+            // const trx_code = "0100"
+            // const data = {no_rek, no_hp, bpr_id, trx_code, status, tgl_trans, rrn}
+            // const request = await connect_axios(bpr[0].gateway,"gateway_bpr/inquiry_account",data)
+            // if (request.code !== "000") {
+            //         res.status(200).send(request);
+            // } else {
+            //     response = request.data
+            //     if (response.status == "0") {
+            //         response.status = "Akun telah dinon-aktifkan"
+            //     } else if (response.status == "1") {
+            //         response.status = "Akun telah diaktifkan"
+            //     } else if (response.status == "2") {
+            //         response.status = "Akun telah diblokir"
+            //     } else {
+            //         response.status = "Status tidak diketahui"
+            //     }
+                let response = {}
+                response["user_id"] = user_id
+                if (status == "0") {
+                  response["status"] = "Akun telah dinon-aktifkan"
+                } else if (status == "1") {
+                  response["status"] = "Akun telah diaktifkan"
                 }
-                response["tgl_trans"] = tgl_trans,
-                response["tgl_transmis"] = moment().format('YYMMDDHHmmss'),
+                response["tgl_trans"] = tgl_trans
+                response["tgl_transmis"] = moment().format('YYMMDDHHmmss')
                 response["rrn"] = rrn
                 res.status(200).send({
                     code: "000",
@@ -456,7 +464,7 @@ const validate_user = async (req, res) => {
                     message: "Success",
                     data: response,
                 });
-            }
+            // }
         }
     } catch (error) {
         //--error server--//
@@ -471,92 +479,54 @@ const validate_user = async (req, res) => {
   
 // API untuk Inquiry Account
 const validate_ktp = async (req, res) => {
-    let {ktp, tgl_trans, tgl_transmis, rrn} = req.body;
+    let {ktp, bpr_id, tgl_trans, tgl_transmis, rrn} = req.body;
     try {
-        // console.log("REQ BODY INQUIRY");
-        // console.log(req.body);
-        // let bpr = await db.sequelize.query(
-        //     `SELECT * FROM kd_bpr WHERE bpr_id = ? AND status = '1'` ,
-        //     {
-        //         replacements: [bpr_id],
-        //         type: db.sequelize.QueryTypes.SELECT,
-        //     }
-        // )
-        // if (!bpr.length) {
-        //     res.status(200).send({
-        //         code: "002",
-        //         status: "Failed",
-        //         message: "Gagal, Inquiry BPR Tidak Ditemukan",
-        //         data: [],
-        //     });
-        // } else {
-        //     // let request = await db.sequelize.query(
-        //     //     `SELECT no_hp, no_rek, bpr_id, nama_rek, status FROM acct_ebpr WHERE bpr_id = ? AND no_hp = ? AND no_rek = ? AND status != '6'` ,
-        //     //     {
-        //     //         replacements: [bpr_id, no_hp, no_rek],
-        //     //         type: db.sequelize.QueryTypes.SELECT,
-        //     //     }
-        //     // )
-        //     // if (!request.length) {
-        //     //     res.status(200).send({
-        //     //         code: "004",
-        //     //         status: "Failed",
-        //     //         message: "Gagal Account Tidak Ditemukan",
-        //     //         data: null,
-        //     //     });
-        //     const trx_code = "0100"
-        //     const trx_type = "TRX"
-        //     const tgl_transmis = moment().format('YYMMDDHHmmss')
-        //     // let [res_log_pokok, meta_log_pokok] = await db.sequelize.query(
-        //     //     `INSERT INTO log_mdw(no_hp,bpr_id,no_rek,trx_code,trx_type,tgl_trans,tgl_transmis,rrn,messages_type) VALUES (?,?,?,?,?,?,?,?,'REQUEST')`,
-        //     //     {
-        //     //         replacements: [
-        //     //             no_rek, no_hp, bpr_id, trx_code, trx_type, tgl_trans, tgl_transmis, rrn
-        //     //         ],
-        //     //     }
-        //     //     );
-        //     const data = {no_rek, no_hp, bpr_id, trx_code, trx_type, tgl_trans, tgl_transmis, rrn}
-        //     const request = await connect_axios(bpr[0].gateway,"gateway_bpr/inquiry_account",data)
-        //     if (request.code !== "000") {
-        //         console.log(request);
-        //         res.status(200).send(request);
-        //     } else {
-        //         response = request.data
-        //         if (trx_code == "0100") {
-        //             if (response.status == "0") {
-        //                 response.status = "AKUN NON AKTIF"
-        //             } else if (response.status == "1") {
-        //                 response.status = "AKUN AKTIF"
-        //             } else if (response.status == "2") {
-        //                 response.status = "AKUN BLOCKED"
-        //             } else {
-        //                 response.status_rek = "UNKNOWN STATUS"
-        //             }
-        //         } else if (trx_code == "0200") {
-        //             if (response.status_rek == "0") {
-        //                 response.status_rek = "AKUN NON AKTIF"
-        //             } else if (response.status_rek == "1") {
-        //                 response.status_rek = "AKUN AKTIF"
-        //             } else if (response.status_rek == "2") {
-        //                 response.status_rek = "AKUN BLOCKED"
-        //             } else {
-        //                 response.status_rek = "UNKNOWN STATUS"
-        //             }
-        //         }
-                console.log({
-                    code: "000",
-                    status: "ok",
-                    message: "Success",
-                    data: req.body,
-                });
-                res.status(200).send({
-                    code: "000",
-                    status: "ok",
-                    message: "Success",
-                    data: req.body,
-                });
-            // }
-        // }
+      console.log("REQ BODY INQUIRY");
+      console.log(req.body);
+      let bpr = await db.sequelize.query(
+          `SELECT * FROM kd_bpr WHERE bpr_id = ? AND status = '1'` ,
+          {
+              replacements: [bpr_id],
+              type: db.sequelize.QueryTypes.SELECT,
+          }
+      )
+      if (!bpr.length) {
+          res.status(200).send({
+              code: "002",
+              status: "Failed",
+              message: "Gagal, Inquiry BPR Tidak Ditemukan",
+              data: [],
+          });
+      } else {
+        let user = await db.sequelize.query(
+            `SELECT nama, no_hp FROM acct_ebpr WHERE no_ktp = ? AND status = '1'` ,
+            {
+                replacements: [ktp],
+                type: db.sequelize.QueryTypes.SELECT,
+            }
+        )
+        if (!user.length) {
+            res.status(200).send({
+                code: "002",
+                status: "Failed",
+                message: "Gagal, Inquiry BPR Tidak Ditemukan",
+                data: [],
+            });
+        } else {
+          console.log({
+              code: "000",
+              status: "ok",
+              message: "Success",
+              data: user[0],
+          });
+          res.status(200).send({
+              code: "000",
+              status: "ok",
+              message: "Success",
+              data: user[0],
+          });
+        }
+      }
     } catch (error) {
       //--error server--//
       console.log("erro get product", error);
