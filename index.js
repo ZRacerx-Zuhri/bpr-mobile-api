@@ -6,6 +6,7 @@ const cors = require("cors");
 const User = require("./route/user");
 const Ppob = require("./route/Ppob");
 const tariktunai = require("./route/tariktunai");
+const bpr = require("./route/bpr");
 require("./utility/redis");
 
 const { sequelize } = require("./dbConnect");
@@ -29,6 +30,7 @@ app.use(bodyParser.urlencoded({ extended: false }));
 app.use("/user", User);
 app.use("/tariktunai", tariktunai);
 app.use("/ppob", Ppob);
+app.use("/bpr", bpr);
 
 app.get("/", (req, res) => {
   res.send("bpr-mobile-api");

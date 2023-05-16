@@ -4,7 +4,7 @@ const {
     encryptStringWithRsaPublicKey,
     decryptStringWithRsaPrivateKey,
   } = require("../utility/encrypt");
-const db = require("../connection");
+const db = require("../dbConnect");
 const moment = require("moment");
 moment.locale("id");
 
