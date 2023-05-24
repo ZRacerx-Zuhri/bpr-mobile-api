@@ -70,26 +70,24 @@ const createUser = async (req, res) => {
 const saldo = async (req, res) => {
   let { no_rek, nama_rek } = req.body;
   try {
-    let check_saldo = await db.sequelize.query(
-      `SELECT * FROM dummy_rek_tabungan WHERE no_rek = ? AND nama_rek = ?`,
-      {
-        replacements: [no_rek, nama_rek],
-        type: db.sequelize.QueryTypes.SELECT,
-      }
-    );
-    if (!check_saldo.length) {
-      res.status(200).send({
-        code: "099",
-        status: "ok",
-        message: "Gagal, Terjadi Kesalahan Pencarian Rekening!!!",
-        data: null,
-      });
-    } else {
+    const trx_code = "0400"
+    const trx_type = "TRX"
+    const tgl_transmis = moment().format('YYMMDDHHmmss')
+    const data = {no_rek, bpr_id: "600931", trx_code, trx_type, tgl_trans:moment().format('YYMMDDHHmmss'), tgl_transmis:moment().format('YYMMDDHHmmss'), rrn:"000000"}
+    console.log("data");
+    console.log(data);
+    const request = await connect_axios("https://gw-dev-api.medtransdigital.com/","gateway_bpr/inquiry_account",data)
+    // const request = await connect_axios("https://cant-washington-yearly-craig.trycloudflare.com/","gateway_bpr/inquiry_account",data)
+    if (request.code !== "000") {
+      console.log(request);
+      res.status(200).send(request);
+  } else {
+    console.log(request);
       res.status(200).send({
         code: "000",
         status: "ok",
         message: "Success",
-        data: check_saldo,
+        data: request,
       });
     }
   } catch (error) {
@@ -231,8 +229,7 @@ const Login = async (req, res) => {
       ac.email,
       kd.bpr_logo,
       ac.unique_id
-      FROM  acct_ebpr ac INNER JOIN dummy_rek_tabungan rk on ac.no_rek = rk.no_rek 
-      INNER JOIN kd_bpr kd on ac.bpr_id = kd.bpr_id WHERE password = ? AND user_id = ?`,
+      FROM  acct_ebpr ac INNER JOIN kd_bpr kd on ac.bpr_id = kd.bpr_id WHERE password = ? AND user_id = ?`,
       {
         replacements: [Password, user_id],
         type: db.sequelize.QueryTypes.SELECT,
@@ -569,41 +566,65 @@ const activate_user = async (req, res) => {
               data: null,
           });
         } else {
-          const trx_code = "0200"
-          const trx_type = "TRX"
-          const tgl_transmis = moment().format('YYMMDDHHmmss')
-          const data = {no_rek, no_hp, bpr_id, trx_code, trx_type, user_id, password, pin, status, tgl_trans, tgl_transmis, rrn}
-          console.log(data);
-          const request = await connect_axios("https://gw-dev-api.medtransdigital.com/","gateway_bpr/inquiry_account",data)
-          if (request.code !== "000") {
-              console.log(request);
-              res.status(200).send(request);
-          } else {
-            let [results, metadata] = await db1.sequelize.query(
-                `INSERT INTO acct_ebpr(no_hp,bpr_id,no_rek,user_id,password,mpin,status) VALUES (?,?,?,?,?,?,?)`,
-                {
-                    replacements: [
-                      no_hp, bpr_id, no_rek, user_id, password, pin, status, 
-                    ],
-                }
-            );
-            if (status == "0") {
-              request["status"] = "Akun telah dinon-aktifkan"
-            } else if (status == "1") {
-              request["status"] = "Akun telah diaktifkan"
-            }
-            console.log({
-                code: "000",
-                status: "ok",
-                message: "Success",
-                data: request,
-            });
+          let acct = await db.sequelize.query(
+              `SELECT * FROM acct_ebpr WHERE bpr_id = ? AND user_id = ? AND status != '6'` ,
+              {
+                  replacements: [bpr_id, user_id],
+                  type: db.sequelize.QueryTypes.SELECT,
+              }
+          )
+          if (acct.length) {
             res.status(200).send({
-                code: "000",
-                status: "ok",
-                message: "Success",
-                data: request,
+                code: "002",
+                status: "Failed",
+                message: "Gagal, User ID telah digunakan",
+                data: null,
             });
+          } else if (!acct.length) {
+            let Password = encryptStringWithRsaPublicKey(
+              password,
+              "./utility/privateKey.pem"
+            );
+            let mpin = encryptStringWithRsaPublicKey(
+              pin,
+              "./utility/privateKey.pem"
+            );
+            const trx_code = "0200"
+            const trx_type = "TRX"
+            const tgl_transmis = moment().format('YYMMDDHHmmss')
+            const data = {no_rek, no_hp, bpr_id, trx_code, trx_type, user_id, password:Password, pin, status, tgl_trans, tgl_transmis, rrn}
+            console.log(data);
+            const request = await connect_axios("https://gw-dev-api.medtransdigital.com/","gateway_bpr/inquiry_account",data)
+            if (request.code !== "000") {
+                console.log(request);
+                res.status(200).send(request);
+            } else {
+              let [results, metadata] = await db1.sequelize.query(
+                  `INSERT INTO acct_ebpr(no_hp,bpr_id,no_rek,user_id,password,mpin,status) VALUES (?,?,?,?,?,?,?)`,
+                  {
+                      replacements: [
+                        no_hp, bpr_id, no_rek, user_id, Password, mpin, status, 
+                      ],
+                  }
+              );
+              if (status == "0") {
+                request["status"] = "Akun telah dinon-aktifkan"
+              } else if (status == "1") {
+                request["status"] = "Akun telah diaktifkan"
+              }
+              console.log({
+                  code: "000",
+                  status: "ok",
+                  message: "Success",
+                  data: request,
+              });
+              res.status(200).send({
+                  code: "000",
+                  status: "ok",
+                  message: "Success",
+                  data: request,
+              });
+            }
           }
         }
     } catch (error) {
