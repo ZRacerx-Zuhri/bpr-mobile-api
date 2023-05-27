@@ -14,36 +14,38 @@ let jwt = require("jsonwebtoken");
 const moment = require("moment");
 
 const connect_axios = async (url, route, data) => {
-    try {
-        let Result = ""
-        console.log(`${url}${route}`);
-        await axios({
-            method: 'post',
-            url: `${url}${route}`,
-            timeout: 50000, //milisecond
-            data
-        }).then(res => {
-            Result = res.data
-        }).catch(error => {
-            if (error.code == 'ECONNABORTED'){
-                Result = {
-                    code: "088",
-                    status: "ECONNABORTED",
-                    message: "Gateway Connection Timeout"
-                }
-            } else {
-                Result = error
-            }
-        });
-        return Result
-    } catch (error) {
-        res.status(200).send({
-            code: "099",
-            status: "Failed",
-            message: error.message
-        });      
-    }
-}
+  try {
+    let Result = "";
+    console.log(`${url}${route}`);
+    await axios({
+      method: "post",
+      url: `${url}${route}`,
+      timeout: 50000, //milisecond
+      data,
+    })
+      .then((res) => {
+        Result = res.data;
+      })
+      .catch((error) => {
+        if (error.code == "ECONNABORTED") {
+          Result = {
+            code: "088",
+            status: "ECONNABORTED",
+            message: "Gateway Connection Timeout",
+          };
+        } else {
+          Result = error;
+        }
+      });
+    return Result;
+  } catch (error) {
+    res.status(200).send({
+      code: "099",
+      status: "Failed",
+      message: error.message,
+    });
+  }
+};
 
 const createUser = async (req, res) => {
   let { pin } = req.body;
@@ -68,21 +70,33 @@ const createUser = async (req, res) => {
 };
 
 const saldo = async (req, res) => {
-  let { no_rek, nama_rek } = req.body;
+  let { no_rek, nama_rek, bpr_id } = req.body;
   try {
-    const trx_code = "0400"
-    const trx_type = "TRX"
-    const tgl_transmis = moment().format('YYMMDDHHmmss')
-    const data = {no_rek, bpr_id: "600931", trx_code, trx_type, tgl_trans:moment().format('YYMMDDHHmmss'), tgl_transmis:moment().format('YYMMDDHHmmss'), rrn:"000000"}
+    const trx_code = "0400";
+    const trx_type = "TRX";
+    const tgl_transmis = moment().format("YYMMDDHHmmss");
+    const data = {
+      no_rek,
+      bpr_id,
+      trx_code,
+      trx_type,
+      tgl_trans: moment().format("YYMMDDHHmmss"),
+      tgl_transmis: moment().format("YYMMDDHHmmss"),
+      rrn: "000000",
+    };
     console.log("data");
     console.log(data);
-    const request = await connect_axios("https://gw-dev-api.medtransdigital.com/","gateway_bpr/inquiry_account",data)
+    const request = await connect_axios(
+      "https://gw-dev-api.medtransdigital.com/",
+      "gateway_bpr/inquiry_account",
+      data
+    );
     // const request = await connect_axios("https://cant-washington-yearly-craig.trycloudflare.com/","gateway_bpr/inquiry_account",data)
     if (request.code !== "000") {
       console.log(request);
       res.status(200).send(request);
-  } else {
-    console.log(request);
+    } else {
+      console.log(request);
       res.status(200).send({
         code: "000",
         status: "ok",
@@ -356,286 +370,346 @@ const HistoryTransaction = async (req, res) => {
     console.log("erro get product", error);
     res.send(error);
   }
-};  
-  
+};
+
 // API untuk Inquiry Account
 const inquiry_account = async (req, res) => {
-    let {no_rek, no_hp, bpr_id, tgl_trans, tgl_transmis, rrn} = req.body;
-    try {
-        console.log("REQ BODY INQUIRY");
-        console.log(req.body);
-        let bpr = await db.sequelize.query(
-            `SELECT * FROM kd_bpr WHERE bpr_id = ? AND status = '1'` ,
-            {
-                replacements: [bpr_id],
-                type: db.sequelize.QueryTypes.SELECT,
-            }
-        )
-        if (!bpr.length) {
-            res.status(200).send({
-                code: "002",
-                status: "Failed",
-                message: "Gagal, Inquiry BPR Tidak Ditemukan",
-                data: [],
-            });
-        } else {
-            const trx_code = "0100"
-            const trx_type = "TRX"
-            const tgl_transmis = moment().format('YYMMDDHHmmss')
-            const data = {no_rek, no_hp, bpr_id, trx_code, trx_type, tgl_trans, tgl_transmis, rrn}
-            const request = await connect_axios("https://cant-washington-yearly-craig.trycloudflare.com/","gateway_bpr/inquiry_account",data)
-            if (request.code !== "000") {
-                console.log(request);
-                res.status(200).send(request);
-            } else {
-                response = request.data
-                if (trx_code == "0100") {
-                    if (response.status == "0") {
-                        response.status = "AKUN NON AKTIF"
-                    } else if (response.status == "1") {
-                        response.status = "AKUN AKTIF"
-                    } else if (response.status == "2") {
-                        response.status = "AKUN BLOCKED"
-                    } else {
-                        response.status_rek = "UNKNOWN STATUS"
-                    }
-                } else if (trx_code == "0200") {
-                    if (response.status_rek == "0") {
-                        response.status_rek = "AKUN NON AKTIF"
-                    } else if (response.status_rek == "1") {
-                        response.status_rek = "AKUN AKTIF"
-                    } else if (response.status_rek == "2") {
-                        response.status_rek = "AKUN BLOCKED"
-                    } else {
-                        response.status_rek = "UNKNOWN STATUS"
-                    }
-                }
-                console.log({
-                    code: "000",
-                    status: "ok",
-                    message: "Success",
-                    data: response,
-                });
-                res.status(200).send({
-                    code: "000",
-                    status: "ok",
-                    message: "Success",
-                    data: response,
-                });
-            }
-        }
-    } catch (error) {
-      //--error server--//
-      console.log("erro get product", error);
+  let { no_rek, no_hp, bpr_id, tgl_trans, tgl_transmis, rrn } = req.body;
+  try {
+    console.log("REQ BODY INQUIRY");
+    console.log(req.body);
+    let bpr = await db.sequelize.query(
+      `SELECT * FROM kd_bpr WHERE bpr_id = ? AND status = '1'`,
+      {
+        replacements: [bpr_id],
+        type: db.sequelize.QueryTypes.SELECT,
+      }
+    );
+    if (!bpr.length) {
       res.status(200).send({
-        code: "099",
+        code: "002",
         status: "Failed",
-        message: error.message
-    });
+        message: "Gagal, Inquiry BPR Tidak Ditemukan",
+        data: [],
+      });
+    } else {
+      const trx_code = "0100";
+      const trx_type = "TRX";
+      const tgl_transmis = moment().format("YYMMDDHHmmss");
+      const data = {
+        no_rek,
+        no_hp,
+        bpr_id,
+        trx_code,
+        trx_type,
+        tgl_trans,
+        tgl_transmis,
+        rrn,
+      };
+      const request = await connect_axios(
+        "https://cant-washington-yearly-craig.trycloudflare.com/",
+        "gateway_bpr/inquiry_account",
+        data
+      );
+      if (request.code !== "000") {
+        console.log(request);
+        res.status(200).send(request);
+      } else {
+        response = request.data;
+        if (trx_code == "0100") {
+          if (response.status == "0") {
+            response.status = "AKUN NON AKTIF";
+          } else if (response.status == "1") {
+            response.status = "AKUN AKTIF";
+          } else if (response.status == "2") {
+            response.status = "AKUN BLOCKED";
+          } else {
+            response.status_rek = "UNKNOWN STATUS";
+          }
+        } else if (trx_code == "0200") {
+          if (response.status_rek == "0") {
+            response.status_rek = "AKUN NON AKTIF";
+          } else if (response.status_rek == "1") {
+            response.status_rek = "AKUN AKTIF";
+          } else if (response.status_rek == "2") {
+            response.status_rek = "AKUN BLOCKED";
+          } else {
+            response.status_rek = "UNKNOWN STATUS";
+          }
+        }
+        console.log({
+          code: "000",
+          status: "ok",
+          message: "Success",
+          data: response,
+        });
+        res.status(200).send({
+          code: "000",
+          status: "ok",
+          message: "Success",
+          data: response,
+        });
+      }
     }
+  } catch (error) {
+    //--error server--//
+    console.log("erro get product", error);
+    res.status(200).send({
+      code: "099",
+      status: "Failed",
+      message: error.message,
+    });
+  }
 };
 
 // API untuk Inquiry Account
 const validate_user = async (req, res) => {
-    let {no_rek, no_hp, bpr_id, tgl_trans, tgl_transmis, rrn} = req.body;
-    try {
-        console.log("REQ BODY VALIDATE");
-        console.log(req.body);
-        let bpr = await db.sequelize.query(
-            `SELECT * FROM kd_bpr WHERE bpr_id = ? AND status = '1'` ,
-            {
-                replacements: [bpr_id],
-                type: db.sequelize.QueryTypes.SELECT,
-            }
-        )
-        if (!bpr.length) {
-          res.status(200).send({
-              code: "002",
-              status: "Failed",
-              message: "Gagal, Inquiry BPR Tidak Ditemukan",
-              data: null,
-          });
-        } else {
-          const trx_code = "0100"
-          const trx_type = "TRX"
-          const tgl_transmis = moment().format('YYMMDDHHmmss')
-          const data = {no_rek, no_hp, bpr_id, trx_code, trx_type, tgl_trans, tgl_transmis, rrn}
-          const request = await connect_axios("https://cant-washington-yearly-craig.trycloudflare.com/","gateway_bpr/inquiry_account",data)
-          if (request.code !== "000") {
-              console.log(request);
-              res.status(200).send(request);
-          } else {
-            if (request.status == "0") {
-                request.status = "AKUN NON AKTIF"
-            } else if (request.status == "1") {
-                request.status = "AKUN AKTIF"
-            } else if (request.status == "2") {
-                request.status = "AKUN BLOCKED"
-            } else {
-                request.status = "UNKNOWN STATUS"
-            }
-            console.log({
-                code: "000",
-                status: "ok",
-                message: "Success",
-                data: request,
-            });
-            res.status(200).send({
-                code: "000",
-                status: "ok",
-                message: "Success",
-                data: request,
-            });
-          }
-        }
-    } catch (error) {
-        //--error server--//
-        console.log("erro get product", error);
-        res.status(200).send({
-            code: "099",
-            status: "Failed",
-            message: error.message
-        });
-    }
-};
-  
-// API untuk Inquiry Account
-const validate_ktp = async (req, res) => {
-    let {ktp, tgl_trans, tgl_transmis, rrn} = req.body;
-    try {
-      console.log("REQ BODY INQUIRY");
-      console.log(req.body);
-      
-      let user = await db.sequelize.query(
-        `SELECT nama, no_hp FROM acct_ebpr WHERE no_ktp = ? AND status = '1'` ,
-        {
-            replacements: [ktp],
-            type: db.sequelize.QueryTypes.SELECT,
-        }
-      )
-      if (!user.length) {
-          res.status(200).send({
-              code: "002",
-              status: "Failed",
-              message: "Gagal, Inquiry BPR Tidak Ditemukan",
-              data: null,
-          });
+  let { no_rek, no_hp, bpr_id, tgl_trans, tgl_transmis, rrn } = req.body;
+  try {
+    console.log("REQ BODY VALIDATE");
+    console.log(req.body);
+    let bpr = await db.sequelize.query(
+      `SELECT * FROM kd_bpr WHERE bpr_id = ? AND status = '1'`,
+      {
+        replacements: [bpr_id],
+        type: db.sequelize.QueryTypes.SELECT,
+      }
+    );
+    if (!bpr.length) {
+      res.status(200).send({
+        code: "002",
+        status: "Failed",
+        message: "Gagal, Inquiry BPR Tidak Ditemukan",
+        data: null,
+      });
+    } else {
+      const trx_code = "0100";
+      const trx_type = "TRX";
+      const tgl_transmis = moment().format("YYMMDDHHmmss");
+      const data = {
+        no_rek,
+        no_hp,
+        bpr_id,
+        trx_code,
+        trx_type,
+        tgl_trans,
+        tgl_transmis,
+        rrn,
+      };
+      const request = await connect_axios(
+        "https://cant-washington-yearly-craig.trycloudflare.com/",
+        "gateway_bpr/inquiry_account",
+        data
+      );
+      if (request.code !== "000") {
+        console.log(request);
+        res.status(200).send(request);
       } else {
+        if (request.status == "0") {
+          request.status = "AKUN NON AKTIF";
+        } else if (request.status == "1") {
+          request.status = "AKUN AKTIF";
+        } else if (request.status == "2") {
+          request.status = "AKUN BLOCKED";
+        } else {
+          request.status = "UNKNOWN STATUS";
+        }
         console.log({
-            code: "000",
-            status: "ok",
-            message: "Success",
-            data: user[0],
+          code: "000",
+          status: "ok",
+          message: "Success",
+          data: request,
         });
         res.status(200).send({
-            code: "000",
-            status: "ok",
-            message: "Success",
-            data: user[0],
+          code: "000",
+          status: "ok",
+          message: "Success",
+          data: request,
         });
       }
-    } catch (error) {
-      //--error server--//
-      console.log("erro get product", error);
-      res.status(200).send({
-        code: "099",
-        status: "Failed",
-        message: error.message
-    });
     }
+  } catch (error) {
+    //--error server--//
+    console.log("erro get product", error);
+    res.status(200).send({
+      code: "099",
+      status: "Failed",
+      message: error.message,
+    });
+  }
+};
+
+// API untuk Inquiry Account
+const validate_ktp = async (req, res) => {
+  let { ktp, tgl_trans, tgl_transmis, rrn } = req.body;
+  try {
+    console.log("REQ BODY INQUIRY");
+    console.log(req.body);
+
+    let user = await db.sequelize.query(
+      `SELECT nama, no_hp FROM acct_ebpr WHERE no_ktp = ? AND status = '1'`,
+      {
+        replacements: [ktp],
+        type: db.sequelize.QueryTypes.SELECT,
+      }
+    );
+    if (!user.length) {
+      res.status(200).send({
+        code: "002",
+        status: "Failed",
+        message: "Gagal, Inquiry BPR Tidak Ditemukan",
+        data: null,
+      });
+    } else {
+      console.log({
+        code: "000",
+        status: "ok",
+        message: "Success",
+        data: user[0],
+      });
+      res.status(200).send({
+        code: "000",
+        status: "ok",
+        message: "Success",
+        data: user[0],
+      });
+    }
+  } catch (error) {
+    //--error server--//
+    console.log("erro get product", error);
+    res.status(200).send({
+      code: "099",
+      status: "Failed",
+      message: error.message,
+    });
+  }
 };
 
 // API untuk Inquiry Account
 const activate_user = async (req, res) => {
-    let {no_rek, no_hp, bpr_id, user_id, password, pin, status, tgl_trans, tgl_transmis, rrn} = req.body;
-    try {
-        console.log("REQ BODY VALIDATE");
-        console.log(req.body);
-        let bpr = await db.sequelize.query(
-            `SELECT * FROM kd_bpr WHERE bpr_id = ? AND status = '1'` ,
-            {
-                replacements: [bpr_id],
-                type: db.sequelize.QueryTypes.SELECT,
-            }
-        )
-        if (!bpr.length) {
-          res.status(200).send({
-              code: "002",
-              status: "Failed",
-              message: "Gagal, Inquiry BPR Tidak Ditemukan",
-              data: null,
-          });
-        } else {
-          let acct = await db.sequelize.query(
-              `SELECT * FROM acct_ebpr WHERE bpr_id = ? AND user_id = ? AND status != '6'` ,
-              {
-                  replacements: [bpr_id, user_id],
-                  type: db.sequelize.QueryTypes.SELECT,
-              }
-          )
-          if (acct.length) {
-            res.status(200).send({
-                code: "002",
-                status: "Failed",
-                message: "Gagal, User ID telah digunakan",
-                data: null,
-            });
-          } else if (!acct.length) {
-            let Password = encryptStringWithRsaPublicKey(
-              password,
-              "./utility/privateKey.pem"
-            );
-            let mpin = encryptStringWithRsaPublicKey(
-              pin,
-              "./utility/privateKey.pem"
-            );
-            const trx_code = "0200"
-            const trx_type = "TRX"
-            const tgl_transmis = moment().format('YYMMDDHHmmss')
-            const data = {no_rek, no_hp, bpr_id, trx_code, trx_type, user_id, password:Password, pin, status, tgl_trans, tgl_transmis, rrn}
-            console.log(data);
-            const request = await connect_axios("https://gw-dev-api.medtransdigital.com/","gateway_bpr/inquiry_account",data)
-            if (request.code !== "000") {
-                console.log(request);
-                res.status(200).send(request);
-            } else {
-              let [results, metadata] = await db1.sequelize.query(
-                  `INSERT INTO acct_ebpr(no_hp,bpr_id,no_rek,user_id,password,mpin,status) VALUES (?,?,?,?,?,?,?)`,
-                  {
-                      replacements: [
-                        no_hp, bpr_id, no_rek, user_id, Password, mpin, status, 
-                      ],
-                  }
-              );
-              if (status == "0") {
-                request["status"] = "Akun telah dinon-aktifkan"
-              } else if (status == "1") {
-                request["status"] = "Akun telah diaktifkan"
-              }
-              console.log({
-                  code: "000",
-                  status: "ok",
-                  message: "Success",
-                  data: request,
-              });
-              res.status(200).send({
-                  code: "000",
-                  status: "ok",
-                  message: "Success",
-                  data: request,
-              });
-            }
-          }
+  let {
+    no_rek,
+    no_hp,
+    bpr_id,
+    user_id,
+    password,
+    pin,
+    status,
+    tgl_trans,
+    tgl_transmis,
+    rrn,
+  } = req.body;
+  try {
+    console.log("REQ BODY VALIDATE");
+    console.log(req.body);
+    let bpr = await db.sequelize.query(
+      `SELECT * FROM kd_bpr WHERE bpr_id = ? AND status = '1'`,
+      {
+        replacements: [bpr_id],
+        type: db.sequelize.QueryTypes.SELECT,
+      }
+    );
+    if (!bpr.length) {
+      res.status(200).send({
+        code: "002",
+        status: "Failed",
+        message: "Gagal, Inquiry BPR Tidak Ditemukan",
+        data: null,
+      });
+    } else {
+      let acct = await db.sequelize.query(
+        `SELECT * FROM acct_ebpr WHERE bpr_id = ? AND user_id = ? AND status != '6'`,
+        {
+          replacements: [bpr_id, user_id],
+          type: db.sequelize.QueryTypes.SELECT,
         }
-    } catch (error) {
-        //--error server--//
-        console.log("erro get product", error);
+      );
+      if (acct.length) {
         res.status(200).send({
-            code: "099",
-            status: "Failed",
-            message: error.message
+          code: "002",
+          status: "Failed",
+          message: "Gagal, User ID telah digunakan",
+          data: null,
         });
+      } else if (!acct.length) {
+        let Password = encryptStringWithRsaPublicKey(
+          password,
+          "./utility/privateKey.pem"
+        );
+        let mpin = encryptStringWithRsaPublicKey(
+          pin,
+          "./utility/privateKey.pem"
+        );
+        const trx_code = "0200";
+        const trx_type = "TRX";
+        const tgl_transmis = moment().format("YYMMDDHHmmss");
+        const data = {
+          no_rek,
+          no_hp,
+          bpr_id,
+          trx_code,
+          trx_type,
+          user_id,
+          password: Password,
+          pin,
+          status,
+          tgl_trans,
+          tgl_transmis,
+          rrn,
+        };
+        console.log(data);
+        const request = await connect_axios(
+          "https://gw-dev-api.medtransdigital.com/",
+          "gateway_bpr/inquiry_account",
+          data
+        );
+        if (request.code !== "000") {
+          console.log(request);
+          res.status(200).send(request);
+        } else {
+          let [results, metadata] = await db1.sequelize.query(
+            `INSERT INTO acct_ebpr(no_hp,bpr_id,no_rek,user_id,password,mpin,status) VALUES (?,?,?,?,?,?,?)`,
+            {
+              replacements: [
+                no_hp,
+                bpr_id,
+                no_rek,
+                user_id,
+                Password,
+                mpin,
+                status,
+              ],
+            }
+          );
+          if (status == "0") {
+            request["status"] = "Akun telah dinon-aktifkan";
+          } else if (status == "1") {
+            request["status"] = "Akun telah diaktifkan";
+          }
+          console.log({
+            code: "000",
+            status: "ok",
+            message: "Success",
+            data: request,
+          });
+          res.status(200).send({
+            code: "000",
+            status: "ok",
+            message: "Success",
+            data: request,
+          });
+        }
+      }
     }
+  } catch (error) {
+    //--error server--//
+    console.log("erro get product", error);
+    res.status(200).send({
+      code: "099",
+      status: "Failed",
+      message: error.message,
+    });
+  }
 };
 
 module.exports = {
