@@ -205,6 +205,8 @@ const request_token_new = async (req, res) => {
   let { no_rek, no_hp, bpr_id, amount, pin, user_id } = req.body;
   const token = generate_token();
   try {
+    let trx_code = "1000"
+    let trx_type = "TRX"
     let Auth = await db.sequelize.query(
       `SELECT unique_id, user_id, no_rek, nama_rek, no_hp, bpr_id FROM acct_ebpr WHERE mpin = ? AND user_id = ? AND no_rek = ?`,
       {
