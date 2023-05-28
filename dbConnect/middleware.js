@@ -1,7 +1,7 @@
 const { DateTime } = require("../utility/dateServer");
 const { Sequelize } = require("sequelize");
 
-let name = "ibprdev";
+let name = "db_middleware";
 let username = process.env.DBUSERNAME;
 let pass = process.env.DBPASS;
 let host = process.env.DBHOST;

@@ -8,7 +8,7 @@ var crypto = require("crypto");
 var path = require("path");
 var fs = require("fs");
 let db = require("../dbConnect/index");
-let db1 = require("../dbConnect/ibprdev");
+let db1 = require("../dbConnect/middleware");
 let jwt = require("jsonwebtoken");
 
 const moment = require("moment");
@@ -86,12 +86,12 @@ const saldo = async (req, res) => {
     };
     console.log("data");
     console.log(data);
-    const request = await connect_axios(
-      "https://gw-dev-api.medtransdigital.com/",
-      "gateway_bpr/inquiry_account",
-      data
-    );
-    // const request = await connect_axios("https://cant-washington-yearly-craig.trycloudflare.com/","gateway_bpr/inquiry_account",data)
+    // const request = await connect_axios(
+    //   "https://gw-dev-api.medtransdigital.com/",
+    //   "gateway_bpr/inquiry_account",
+    //   data
+    // );
+    const request = await connect_axios("https://physical-actions-tracker-border.trycloudflare.com/","gateway_bpr/inquiry_account",data)
     if (request.code !== "000") {
       console.log(request);
       res.status(200).send(request);
@@ -379,7 +379,7 @@ const inquiry_account = async (req, res) => {
   try {
     console.log("REQ BODY INQUIRY");
     console.log(req.body);
-    let bpr = await db.sequelize.query(
+    let bpr = await db1.sequelize.query(
       `SELECT * FROM kd_bpr WHERE bpr_id = ? AND status = '1'`,
       {
         replacements: [bpr_id],
@@ -408,7 +408,7 @@ const inquiry_account = async (req, res) => {
         rrn,
       };
       const request = await connect_axios(
-        "https://cant-washington-yearly-craig.trycloudflare.com/",
+        "https://physical-actions-tracker-border.trycloudflare.com/",
         "gateway_bpr/inquiry_account",
         data
       );
@@ -498,7 +498,7 @@ const validate_user = async (req, res) => {
         rrn,
       };
       const request = await connect_axios(
-        "https://cant-washington-yearly-craig.trycloudflare.com/",
+        "https://physical-actions-tracker-border.trycloudflare.com/",
         "gateway_bpr/inquiry_account",
         data
       );
@@ -668,7 +668,7 @@ const activate_user = async (req, res) => {
           console.log(request);
           res.status(200).send(request);
         } else {
-          let [results, metadata] = await db1.sequelize.query(
+          let [results, metadata] = await db.sequelize.query(
             `INSERT INTO acct_ebpr(no_hp,bpr_id,no_rek,user_id,password,mpin,status) VALUES (?,?,?,?,?,?,?)`,
             {
               replacements: [
