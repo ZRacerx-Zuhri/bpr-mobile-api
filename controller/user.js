@@ -242,6 +242,7 @@ const Login = async (req, res) => {
       ac."password",
       ac.email,
       kd.bpr_logo,
+      ac.logo1,
       ac.unique_id
       FROM  acct_ebpr ac INNER JOIN kd_bpr kd on ac.bpr_id = kd.bpr_id WHERE password = ? AND user_id = ?`,
       {

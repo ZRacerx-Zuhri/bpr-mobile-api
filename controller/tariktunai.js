@@ -202,7 +202,7 @@ const request_token = async (req, res) => {
 };
 
 const request_token_new = async (req, res) => {
-  let { no_rek, no_hp, bpr_id, amount, pin, user_id } = req.body;
+  let { no_rek, no_hp, bpr_id, amount, trans_fee, pin, user_id, tgl_trans, tgl_transmis, rrn } = req.body;
   const token = generate_token();
   try {
     let trx_code = "1000"
