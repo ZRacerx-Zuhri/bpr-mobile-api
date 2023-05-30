@@ -2,6 +2,7 @@ let db = require("../dbConnect/index");
 let db1 = require("../dbConnect/middleware");
 const axios = require("axios").default;
 let moment = require("moment");
+const schedule = require('node-schedule');
 moment.locale("id");
 const { encryptStringWithRsaPublicKey } = require("../utility/encrypt");
 const { date } = require("../utility/getDate");
@@ -304,7 +305,7 @@ const request_token_new = async (req, res) => {
         
         if (trx_type === "TRX") {
           const keterangan = `TOKEN ${amount} ${moment().format('YYYY-MM-DD HH:mm:ss')}`;
-          const data = { no_hp: Auth[0].no_hp, bpr_id: Auth[0].bpr_id, no_rek, amount, trans_fee, trx_code, trx_type, keterangan, acq_id: "", terminal_id: "", token: "", lokasi: "", tgl_trans, tgl_transmis, rrn }
+          const data = { no_hp: Auth[0].no_hp, bpr_id: Auth[0].bpr_id, no_rek, amount, trans_fee, trx_code, trx_type, keterangan, acq_id: "", terminal_id: "", token: "", lokasi: "", tgl_trans: moment().format('YYYY-MM-DD HH:mm:ss'), tgl_transmis, rrn }
           console.log("data");
           console.log(data);
           const request = await connect_axios(bpr[0].gateway, "gateway_bpr/withdrawal", data)
@@ -511,5 +512,164 @@ const request_token_new = async (req, res) => {
     });
   }
 };
+
+schedule.scheduleJob('*/5 * * * * *', async function () {
+// schedule.scheduleJob('* * * * *', async function () {
+  let date_now = moment().format('YYYY-MM-DD HH:mm:ss')
+  let token = await db.sequelize.query(
+    `SELECT * FROM token WHERE status = '0' AND tgl_expired < ?`,
+    {
+      replacements: [date_now],
+      type: db.sequelize.QueryTypes.SELECT,
+    }
+  );
+  console.log(token);
+  for (let i = 0; i < token.length; i++) {
+    let check_hold_dana = await db.sequelize.query(
+        `SELECT * FROM dummy_hold_dana WHERE no_rek = ? AND token = ? AND tgl_trans = ?`,
+        {
+            replacements: [token[i].no_rek, token[i].token, token[i].tgl_trans],
+            type: db.sequelize.QueryTypes.SELECT,
+        }
+    );
+    if (!check_hold_dana.length) {
+        console.log({
+            code: "009",
+            status: "Failed",
+            message: "Gagal, Original Not Found!!!",
+            data: null,
+        });
+    } else {
+      let check_transaksi = await db.sequelize.query(
+          `SELECT * FROM dummy_transaksi WHERE no_rek = ? AND reff = ? AND tgljam_trans = ?`,
+          {
+              replacements: [check_hold_dana[0].no_rek, check_hold_dana[0].reff, check_hold_dana[0].tgl_trans],
+              type: db.sequelize.QueryTypes.SELECT,
+          }
+      );
+      if (!check_transaksi.length) {
+          console.log({
+              code: "009",
+              status: "Failed",
+              message: "Gagal, Transaction Not Found!!!",
+              data: null,
+          });
+      } else {
+        let kartu = await db.sequelize.query(
+          `SELECT * FROM acct_ebpr WHERE unique_id = ?`,
+          {
+              replacements: [check_transaksi[0].unique_id],
+              type: db.sequelize.QueryTypes.SELECT,
+          }
+        );
+        if (!kartu.length) {
+          console.log({
+              code: "002",
+              status: "Failed",
+              message: "Gagal, Terjadi Kesalahan Pencarian Account!!!",
+              data: null,
+          });
+        } else {
+          let bpr = await db1.sequelize.query(
+            `SELECT * FROM kd_bpr WHERE bpr_id = ?`,
+            {
+                replacements: [check_transaksi[0].bpr_id],
+                type: db.sequelize.QueryTypes.SELECT,
+            }
+          );
+          if (!bpr.length) {
+            console.log({
+                code: "002",
+                status: "Failed",
+                message: "Gagal, Terjadi Kesalahan Pencarian BPR!!!",
+                data: null,
+            });
+          } else {
+            if (check_transaksi[0].status_rek !== "R") {
+              const keterangan = `Reversal Token ${check_transaksi[0].amount} ${moment().format('YYYY-MM-DD HH:mm:ss')}`;
+              const data = { no_hp: kartu[0].no_hp, bpr_id: check_transaksi[0].bpr_id, no_rek: check_transaksi[0].no_rek, amount: check_transaksi[0].amount, trans_fee: check_transaksi[0].admin_fee, trx_code: "1000", trx_type: "REV", keterangan, acq_id: "", acq_id: "", terminal_id: "", token: "", lokasi: "", tgl_trans: moment(check_transaksi[0].tgljam_trans).format('YYYY-MM-DD HH:mm:ss'), tgl_transmis: date_now, rrn: check_transaksi[0].rrn }
+              console.log("data reversal token");
+              console.log(data);
+              const request = await connect_axios(bpr[0].gateway, "gateway_bpr/withdrawal", data)
+              if (request.code !== "000") {
+                console.log("request");
+                console.log(request);
+                  // let [results, metadata] = await db.sequelize.query(
+                  //     `INSERT INTO dummy_transaksi(no_hp, bpr_id, no_rek, nama_rek, tcode, produk_id, ket_trans, reff, amount, admin_fee, tgl_trans, token, rrn, code, message, status_rek) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'0')`,
+                  //     {
+                  //         replacements: [
+                  //             "",
+                  //             check_transaksi[0].bpr_id,
+                  //             check_transaksi[0].no_rek,
+                  //             check_transaksi[0].nama_rek,
+                  //             "1000",
+                  //             "Reversal Token",
+                  //             keterangan,
+                  //             "",
+                  //             check_transaksi[0].amount,
+                  //             check_transaksi[0].admin_fee,
+                  //             check_transaksi[0].tgljam_trans,
+                  //             "",
+                  //             check_transaksi[0].rrn,
+                  //             request.code,
+                  //             request.message,
+                  //         ],
+                  //     }
+                  // );
+              } else {
+                console.log("request.data");
+                console.log(request.data);
+                let [results, metadata] = await db.sequelize.query(
+                    `UPDATE dummy_hold_dana SET status = '2' WHERE token = ? AND status = '0'`,
+                    {
+                    replacements: [
+                        token[i].token
+                    ],
+                    }
+                );
+                let [results2, metadata2] = await db.sequelize.query(
+                  `UPDATE token SET status = '2' WHERE token = ? AND status = '0'`,
+                  {
+                  replacements: [
+                      token[i].token
+                  ],
+                  }
+              );
+              let [results3, metadata3] = await db.sequelize.query(
+                    `UPDATE dummy_transaksi SET status_rek = '2' WHERE unique_id = ? AND bpr_id = ? AND no_rek = ? AND tcode = ? AND amount = ? AND rrn = ? AND status_rek = '0'`,
+                    {
+                        replacements: [
+                            kartu[0].unique_id,
+                            check_transaksi[0].bpr_id,
+                            check_transaksi[0].no_rek,
+                            "1000",
+                            check_transaksi[0].amount,
+                            check_transaksi[0].rrn
+                        ],
+                    }
+                );
+                console.log({
+                    code: "000",
+                    status: "ok",
+                    message: "Success",
+                    data: request.data,
+                });
+              }
+            } else {
+              console.log({
+                  code: "012",
+                  status: "Failed",
+                  message: "Gagal, Duplicated Transmission!!!",
+                  data: null,
+              });
+            }
+          }
+        }
+      }
+    } 
+  }
+  console.count(" Task Done @ " + date_now);
+})
+
 
 module.exports = { request_token, request_token_new };

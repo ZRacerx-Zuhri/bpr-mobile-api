@@ -91,7 +91,7 @@ const saldo = async (req, res) => {
     //   "gateway_bpr/inquiry_account",
     //   data
     // );
-    const request = await connect_axios("https://physical-actions-tracker-border.trycloudflare.com/","gateway_bpr/inquiry_account",data)
+    const request = await connect_axios("https://fixed-innovative-dee-brochure.trycloudflare.com/","gateway_bpr/inquiry_account",data)
     if (request.code !== "000") {
       console.log(request);
       res.status(200).send(request);
@@ -408,7 +408,7 @@ const inquiry_account = async (req, res) => {
         rrn,
       };
       const request = await connect_axios(
-        "https://physical-actions-tracker-border.trycloudflare.com/",
+        "https://fixed-innovative-dee-brochure.trycloudflare.com/",
         "gateway_bpr/inquiry_account",
         data
       );
@@ -498,7 +498,7 @@ const validate_user = async (req, res) => {
         rrn,
       };
       const request = await connect_axios(
-        "https://physical-actions-tracker-border.trycloudflare.com/",
+        "https://fixed-innovative-dee-brochure.trycloudflare.com/",
         "gateway_bpr/inquiry_account",
         data
       );
