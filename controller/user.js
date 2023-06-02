@@ -47,6 +47,8 @@ const connect_axios = async (url, route, data) => {
   }
 };
 
+const URL_GATEWAY = process.env.URL_GATEWAY
+
 const createUser = async (req, res) => {
   let { pin } = req.body;
   console.log(pin);
@@ -91,7 +93,7 @@ const saldo = async (req, res) => {
     //   "gateway_bpr/inquiry_account",
     //   data
     // );
-    const request = await connect_axios("https://fixed-innovative-dee-brochure.trycloudflare.com/","gateway_bpr/inquiry_account",data)
+    const request = await connect_axios(URL_GATEWAY,"gateway_bpr/inquiry_account",data)
     if (request.code !== "000") {
       console.log(request);
       res.status(200).send(request);
@@ -408,7 +410,7 @@ const inquiry_account = async (req, res) => {
         rrn,
       };
       const request = await connect_axios(
-        "https://fixed-innovative-dee-brochure.trycloudflare.com/",
+        URL_GATEWAY,
         "gateway_bpr/inquiry_account",
         data
       );
@@ -467,7 +469,7 @@ const inquiry_account = async (req, res) => {
 const validate_user = async (req, res) => {
   let { no_rek, no_hp, bpr_id, tgl_trans, tgl_transmis, rrn } = req.body;
   try {
-    console.log("REQ BODY VALIDATE");
+    console.log("REQ BODY VALIDATE USER");
     console.log(req.body);
     let bpr = await db.sequelize.query(
       `SELECT * FROM kd_bpr WHERE bpr_id = ? AND status = '1'`,
@@ -497,8 +499,10 @@ const validate_user = async (req, res) => {
         tgl_transmis,
         rrn,
       };
+      console.log("data");
+      console.log(data);
       const request = await connect_axios(
-        "https://fixed-innovative-dee-brochure.trycloudflare.com/",
+        URL_GATEWAY,
         "gateway_bpr/inquiry_account",
         data
       );
@@ -548,7 +552,7 @@ const validate_ktp = async (req, res) => {
     console.log(req.body);
 
     let user = await db.sequelize.query(
-      `SELECT nama, no_hp FROM acct_ebpr WHERE no_ktp = ? AND status = '1'`,
+      `SELECT nama, no_hp FROM dummy_ktp WHERE no_ktp = ?`,
       {
         replacements: [ktp],
         type: db.sequelize.QueryTypes.SELECT,
@@ -558,7 +562,7 @@ const validate_ktp = async (req, res) => {
       res.status(200).send({
         code: "002",
         status: "Failed",
-        message: "Gagal, Inquiry BPR Tidak Ditemukan",
+        message: "Gagal, KTP Tidak Ditemukan",
         data: null,
       });
     } else {
@@ -601,7 +605,7 @@ const activate_user = async (req, res) => {
     rrn,
   } = req.body;
   try {
-    console.log("REQ BODY VALIDATE");
+    console.log("REQ BODY AKTIVASI USER");
     console.log(req.body);
     let bpr = await db.sequelize.query(
       `SELECT * FROM kd_bpr WHERE bpr_id = ? AND status = '1'`,
@@ -637,8 +641,10 @@ const activate_user = async (req, res) => {
           password,
           "./utility/privateKey.pem"
         );
+        console.log(`${((parseInt(pin) + 111111 - 999999) / 2)}`);
+        console.log(`${pin}${no_hp.substring(no_hp.length - 4, no_hp.length)}`);
         let mpin = encryptStringWithRsaPublicKey(
-          pin,
+          `${pin}${no_hp.substring(no_hp.length - 4, no_hp.length)}`,
           "./utility/privateKey.pem"
         );
         const trx_code = "0200";
@@ -652,7 +658,7 @@ const activate_user = async (req, res) => {
           trx_type,
           user_id,
           password: Password,
-          pin,
+          pin: mpin,
           status,
           tgl_trans,
           tgl_transmis,
@@ -660,24 +666,35 @@ const activate_user = async (req, res) => {
         };
         console.log(data);
         const request = await connect_axios(
-          "https://gw-dev-api.medtransdigital.com/",
+          URL_GATEWAY,
           "gateway_bpr/inquiry_account",
           data
         );
+        console.log(request);
         if (request.code !== "000") {
           console.log(request);
+          request.data = {
+            status : "Gagal, Akun Tidak Ditemukan"
+          }
           res.status(200).send(request);
         } else {
+          let unique_id = moment().format('DDMMYY');
+          let cek_unique_id = await db.sequelize.query(
+              `SELECT * FROM acct_ebpr WHERE unique_id LIKE '%${unique_id}%'`,{
+                  type: db.sequelize.QueryTypes.SELECT,
+              });
+          let run_number = `000${cek_unique_id.length+1}`
+          unique_id = `${bpr_id}${unique_id}${run_number.substring(run_number.length-4,run_number.length)}`
           let [results, metadata] = await db.sequelize.query(
-            `INSERT INTO acct_ebpr(no_hp,bpr_id,no_rek,user_id,password,mpin,status) VALUES (?,?,?,?,?,?,?)`,
+            `INSERT INTO acct_ebpr(unique_id,no_hp,bpr_id,no_rek,user_id,password,status) VALUES (?,?,?,?,?,?,?)`,
             {
               replacements: [
+                unique_id,
                 no_hp,
                 bpr_id,
                 no_rek,
                 user_id,
                 Password,
-                mpin,
                 status,
               ],
             }
