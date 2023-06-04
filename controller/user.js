@@ -599,6 +599,8 @@ const activate_user = async (req, res) => {
     user_id,
     password,
     pin,
+    no_ktp,
+    nama,
     status,
     tgl_trans,
     tgl_transmis,
@@ -686,13 +688,16 @@ const activate_user = async (req, res) => {
           let run_number = `000${cek_unique_id.length+1}`
           unique_id = `${bpr_id}${unique_id}${run_number.substring(run_number.length-4,run_number.length)}`
           let [results, metadata] = await db.sequelize.query(
-            `INSERT INTO acct_ebpr(unique_id,no_hp,bpr_id,no_rek,user_id,password,status) VALUES (?,?,?,?,?,?,?)`,
+            `INSERT INTO acct_ebpr(unique_id,no_hp,bpr_id,no_rek,no_ktp,nama,nama_rek,user_id,password,status) VALUES (?,?,?,?,?,?,?,?,?,?)`,
             {
               replacements: [
                 unique_id,
                 no_hp,
                 bpr_id,
                 no_rek,
+                no_ktp,
+                nama,
+                request.data.nama_rek,
                 user_id,
                 Password,
                 status,

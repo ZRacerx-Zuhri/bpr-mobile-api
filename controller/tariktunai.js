@@ -362,7 +362,7 @@ const request_token_new = async (req, res) => {
               console.log("request.data");
               console.log(request.data);
               let [results, metadata] = await db.sequelize.query(
-                `INSERT INTO dummy_hold_dana(no_rek, nama_rek, token, tcode, ket_trans, reff, amount,tgl_trans, status) VALUES (?,?,?,?,?,?,?,?,'0')`,
+                `INSERT INTO dummy_hold_dana(no_rek, nama_rek, token, tcode, ket_trans, reff, amount,tgl_trans, rrn, status) VALUES (?,?,?,?,?,?,?,?,?,'0')`,
                 {
                   replacements: [
                     Auth[0].no_rek,
@@ -373,6 +373,7 @@ const request_token_new = async (req, res) => {
                     reff,
                     amount,
                     tgl_trans,
+                    rrn
                   ],
                 }
               );
@@ -416,13 +417,14 @@ const request_token_new = async (req, res) => {
                   });
                 } else {
                   let [results, metadata] = await db.sequelize.query(
-                    `INSERT INTO token(no_rek, token, tgl_trans, tgl_expired, status) VALUES (?,?,?,?,'0')`,
+                    `INSERT INTO token(no_rek, token, tgl_trans, tgl_expired, rrn, status) VALUES (?,?,?,?,?,'0')`,
                     {
                       replacements: [
                         Auth[0].no_rek,
                         token,
                         tgl_trans,
                         tgl_expired,
+                        rrn
                       ],
                     }
                   );
@@ -465,27 +467,27 @@ const request_token_new = async (req, res) => {
               if (request.code !== "000") {
                   console.log("request");
                   console.log(request);
-                  let [results, metadata] = await db.sequelize.query(
-                      `INSERT INTO dummy_transaksi(unique_id, bpr_id, no_rek, nama_rek, tcode, produk_id, ket_trans, reff, amount, admin_fee, tgljam_trans, rrn, code, message, status_rek) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,'0')`,
-                      {
-                          replacements: [
-                              Auth[0].unique_id,
-                              Auth[0].bpr_id,
-                              Auth[0].no_rek,
-                              Auth[0].nama_rek,
-                              trx_code,
-                              "Token",
-                              keterangan,
-                              "",
-                              amount,
-                              trans_fee,
-                              tgl_trans,
-                              rrn,
-                              request.code,
-                              request.message,
-                          ],
-                      }
-                  );
+                  // let [results, metadata] = await db.sequelize.query(
+                  //     `INSERT INTO dummy_transaksi(unique_id, bpr_id, no_rek, nama_rek, tcode, produk_id, ket_trans, reff, amount, admin_fee, tgljam_trans, rrn, code, message, status_rek) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,'0')`,
+                  //     {
+                  //         replacements: [
+                  //             Auth[0].unique_id,
+                  //             Auth[0].bpr_id,
+                  //             Auth[0].no_rek,
+                  //             Auth[0].nama_rek,
+                  //             trx_code,
+                  //             "Token",
+                  //             keterangan,
+                  //             "",
+                  //             amount,
+                  //             trans_fee,
+                  //             tgl_trans,
+                  //             rrn,
+                  //             request.code,
+                  //             request.message,
+                  //         ],
+                  //     }
+                  // );
                   res.status(200).send(request);
               } else {
                   console.log("request.data");
