@@ -244,11 +244,17 @@ const Login = async (req, res) => {
       ac."password",
       ac.email,
       kd.bpr_logo,
-      ac.logo1,
+      ac.device_id,
       ac.unique_id
       FROM  acct_ebpr ac INNER JOIN kd_bpr kd on ac.bpr_id = kd.bpr_id WHERE password = ? AND user_id = ?`,
       {
         replacements: [Password, user_id],
+        type: db.sequelize.QueryTypes.SELECT,
+      }
+    );
+    let logo = await db.sequelize.query(
+      `SELECT * FROM logo WHERE nama_logo = 'mtd'`,
+      {
         type: db.sequelize.QueryTypes.SELECT,
       }
     );
@@ -294,6 +300,7 @@ const Login = async (req, res) => {
         //   }
         // );
         Request[0]["limit"] = "1250000"
+        Request[0]["logo1"] = logo[0].logo
 
         res.status(200).send({
           code: "000",
@@ -736,6 +743,44 @@ const activate_user = async (req, res) => {
   }
 };
 
+const update_device = async (req, res) => {
+  try {
+    let { user_id, no_hp } = req.body;
+
+    let [results, metadata] = await db.sequelize.query(
+      `UPDATE acct_ebpr SET device_id = ? WHERE user_id = ? AND no_hp = ?`,
+      {
+        replacements: [user_id, no_hp],
+      }
+    );
+    console.log(metadata.rowCount);
+    if (!metadata.rowCount) {
+      res.status(200).send({
+        code: "002",
+        status: "ok",
+        message: "Gagal update Device ID",
+        data: null,
+      });
+    } else {
+      res.status(200).send({
+        code: "000",
+        status: "ok",
+        message: "Success",
+        data: "Update Device ID Berhasil",
+      });
+    }
+  } catch (error) {
+    console.log("error aktivasi", error);
+
+    res.status(200).send({
+      code: "E99",
+      status: "error",
+      message: error.message,
+      data: null,
+    });
+  }
+};
+
 module.exports = {
   createUser,
   validasi,
@@ -747,4 +792,5 @@ module.exports = {
   validate_user,
   validate_ktp,
   activate_user,
+  update_device
 };
