@@ -31,6 +31,7 @@ app.use("/user", User);
 app.use("/tariktunai", tariktunai);
 app.use("/ppob", Ppob);
 app.use("/bpr", bpr);
+app.use("/sms", otp);
 
 app.get("/", (req, res) => {
   res.send("bpr-mobile-api");

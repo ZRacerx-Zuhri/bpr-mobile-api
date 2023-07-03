@@ -12,6 +12,10 @@ let db1 = require("../dbConnect/middleware");
 let jwt = require("jsonwebtoken");
 
 const moment = require("moment");
+const { TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_SERVICE_SID } =
+  process.env;
+
+const client = require("twilio")(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN);
 
 const connect_axios = async (url, route, data) => {
   try {
@@ -47,7 +51,7 @@ const connect_axios = async (url, route, data) => {
   }
 };
 
-const URL_GATEWAY = process.env.URL_GATEWAY
+const URL_GATEWAY = process.env.URL_GATEWAY;
 
 const createUser = async (req, res) => {
   let { pin } = req.body;
@@ -93,7 +97,11 @@ const saldo = async (req, res) => {
     //   "gateway_bpr/inquiry_account",
     //   data
     // );
-    const request = await connect_axios(URL_GATEWAY,"gateway_bpr/inquiry_account",data)
+    const request = await connect_axios(
+      URL_GATEWAY,
+      "gateway_bpr/inquiry_account",
+      data
+    );
     if (request.code !== "000") {
       console.log(request);
       res.status(200).send(request);
@@ -299,8 +307,8 @@ const Login = async (req, res) => {
         //     EX: 60 * 60 * 24,
         //   }
         // );
-        Request[0]["limit"] = "1250000"
-        Request[0]["logo1"] = logo[0].logo
+        Request[0]["limit"] = "1250000";
+        Request[0]["logo1"] = logo[0].logo;
 
         res.status(200).send({
           code: "000",
@@ -651,7 +659,7 @@ const activate_user = async (req, res) => {
           password,
           "./utility/privateKey.pem"
         );
-        console.log(`${((parseInt(pin) + 111111 - 999999) / 2)}`);
+        console.log(`${(parseInt(pin) + 111111 - 999999) / 2}`);
         console.log(`${pin}${no_hp.substring(no_hp.length - 4, no_hp.length)}`);
         let mpin = encryptStringWithRsaPublicKey(
           `${pin}${no_hp.substring(no_hp.length - 4, no_hp.length)}`,
@@ -684,17 +692,22 @@ const activate_user = async (req, res) => {
         if (request.code !== "000") {
           console.log(request);
           request.data = {
-            status : "Gagal, Akun Tidak Ditemukan"
-          }
+            status: "Gagal, Akun Tidak Ditemukan",
+          };
           res.status(200).send(request);
         } else {
-          let unique_id = moment().format('DDMMYY');
+          let unique_id = moment().format("DDMMYY");
           let cek_unique_id = await db.sequelize.query(
-              `SELECT * FROM acct_ebpr WHERE unique_id LIKE '%${unique_id}%'`,{
-                  type: db.sequelize.QueryTypes.SELECT,
-              });
-          let run_number = `000${cek_unique_id.length+1}`
-          unique_id = `${bpr_id}${unique_id}${run_number.substring(run_number.length-4,run_number.length)}`
+            `SELECT * FROM acct_ebpr WHERE unique_id LIKE '%${unique_id}%'`,
+            {
+              type: db.sequelize.QueryTypes.SELECT,
+            }
+          );
+          let run_number = `000${cek_unique_id.length + 1}`;
+          unique_id = `${bpr_id}${unique_id}${run_number.substring(
+            run_number.length - 4,
+            run_number.length
+          )}`;
           let [results, metadata] = await db.sequelize.query(
             `INSERT INTO acct_ebpr(unique_id,no_hp,bpr_id,no_rek,no_ktp,nama,nama_rek,user_id,password,status) VALUES (?,?,?,?,?,?,?,?,?,?)`,
             {
@@ -745,32 +758,48 @@ const activate_user = async (req, res) => {
 
 const update_device = async (req, res) => {
   try {
-    let { user_id, no_hp, device_id } = req.body;
+    let { user_id, no_hp, device_id, countryCode } = req.body;
 
-    let [results, metadata] = await db.sequelize.query(
-      `UPDATE acct_ebpr SET device_id = ? WHERE user_id = ? AND no_hp = ?`,
-      {
-        replacements: [device_id, user_id, no_hp],
+    let verifyResponse = await client.verify._v2
+      .services(TWILIO_SERVICE_SID)
+      .verificationChecks.create({
+        to: `+${countryCode}${no_hp}`,
+        code: otp,
+      });
+
+    if (verifyResponse.valid) {
+      let [results, metadata] = await db.sequelize.query(
+        `UPDATE acct_ebpr SET device_id = ? WHERE user_id = ? AND no_hp = ?`,
+        {
+          replacements: [device_id, user_id, no_hp],
+        }
+      );
+      console.log(metadata.rowCount);
+      if (!metadata.rowCount) {
+        res.status(200).send({
+          code: "002",
+          status: "ok",
+          message: "Gagal update Device ID",
+          data: null,
+        });
+      } else {
+        res.status(200).send({
+          code: "000",
+          status: "ok",
+          message: "Success",
+          data: "Update Device ID Berhasil",
+        });
       }
-    );
-    console.log(metadata.rowCount);
-    if (!metadata.rowCount) {
+    } else {
       res.status(200).send({
         code: "002",
         status: "ok",
         message: "Gagal update Device ID",
         data: null,
       });
-    } else {
-      res.status(200).send({
-        code: "000",
-        status: "ok",
-        message: "Success",
-        data: "Update Device ID Berhasil",
-      });
     }
   } catch (error) {
-    console.log("error aktivasi", error);
+    console.log("error device update", error);
 
     res.status(200).send({
       code: "E99",
@@ -792,5 +821,5 @@ module.exports = {
   validate_user,
   validate_ktp,
   activate_user,
-  update_device
+  update_device,
 };
