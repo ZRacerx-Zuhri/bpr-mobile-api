@@ -30,12 +30,12 @@ const sendOtp = async (req, res) => {
 };
 
 const verifyOtp = async (req, res) => {
-  let { countryCode, phoneNumber, otp } = req.body;
+  let { no_hp, otp } = req.body;
   try {
     let verifyResponse = await client.verify.v2
       .services(TWILIO_SERVICE_SID)
       .verificationChecks.create({
-        to: `+${countryCode}${phoneNumber}`,
+        to: `+62${no_hp.replace(/^0/, "")}`,
         code: otp,
       });
     res.status(200).send({
