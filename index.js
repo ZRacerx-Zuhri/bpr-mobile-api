@@ -7,6 +7,7 @@ const User = require("./route/user");
 const Ppob = require("./route/Ppob");
 const tariktunai = require("./route/tariktunai");
 const bpr = require("./route/bpr");
+const otp = require("./route/smsOtp");
 require("./utility/redis");
 
 const { sequelize } = require("./dbConnect");

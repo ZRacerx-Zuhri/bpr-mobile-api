@@ -758,12 +758,12 @@ const activate_user = async (req, res) => {
 
 const update_device = async (req, res) => {
   try {
-    let { user_id, no_hp, device_id, countryCode } = req.body;
+    let { user_id, no_hp, device_id, otp } = req.body;
 
-    let verifyResponse = await client.verify._v2
+    let verifyResponse = await client.verify.v2
       .services(TWILIO_SERVICE_SID)
       .verificationChecks.create({
-        to: `+${countryCode}${no_hp}`,
+        to: `+62${no_hp.replace(/^0/, "")}`,
         code: otp,
       });
 
@@ -779,7 +779,7 @@ const update_device = async (req, res) => {
         res.status(200).send({
           code: "002",
           status: "ok",
-          message: "Gagal update Device ID",
+          message: "Verifikasi Gagal",
           data: null,
         });
       } else {
@@ -787,14 +787,14 @@ const update_device = async (req, res) => {
           code: "000",
           status: "ok",
           message: "Success",
-          data: "Update Device ID Berhasil",
+          data: "Verifikasi Berhasil",
         });
       }
     } else {
       res.status(200).send({
         code: "002",
         status: "ok",
-        message: "Gagal update Device ID",
+        message: "Verifikasi Gagal",
         data: null,
       });
     }
