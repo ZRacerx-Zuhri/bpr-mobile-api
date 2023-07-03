@@ -745,12 +745,12 @@ const activate_user = async (req, res) => {
 
 const update_device = async (req, res) => {
   try {
-    let { user_id, no_hp } = req.body;
+    let { user_id, no_hp, device_id } = req.body;
 
     let [results, metadata] = await db.sequelize.query(
       `UPDATE acct_ebpr SET device_id = ? WHERE user_id = ? AND no_hp = ?`,
       {
-        replacements: [user_id, no_hp],
+        replacements: [device_id, user_id, no_hp],
       }
     );
     console.log(metadata.rowCount);
