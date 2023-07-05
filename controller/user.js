@@ -235,7 +235,7 @@ const aktivasi = async (req, res) => {
 };
 
 const Login = async (req, res) => {
-  let { user_id, password } = req.body;
+  let { user_id, password, device_id } = req.body;
   // console.log("tes...");
   try {
     let Password = encryptStringWithRsaPublicKey(
@@ -297,25 +297,34 @@ const Login = async (req, res) => {
             expiresIn: "24h",
           }
         );
-
-        // await Redis.set(
-        //   Request[0]["user_id"],
-        //   JSON.stringify({
-        //     refreshToken,
-        //   }),
-        //   {
-        //     EX: 60 * 60 * 24,
-        //   }
-        // );
         Request[0]["limit"] = "1250000";
         Request[0]["logo1"] = logo[0].logo;
 
-        res.status(200).send({
-          code: "000",
-          status: "ok",
-          message: "Success",
-          data: [{ ...Request[0], accessToken, refreshToken }],
-        });
+        if (Request[0]["device_id"] === device_id) {
+          // await Redis.set(
+          //   Request[0]["user_id"],
+          //   JSON.stringify({
+          //     refreshToken,
+          //   }),
+          //   {
+          //     EX: 60 * 60 * 24,
+          //   }
+          // );
+
+          res.status(200).send({
+            code: "000",
+            status: "ok",
+            message: "Success",
+            data: [{ ...Request[0], accessToken, refreshToken, valid: true }],
+          });
+        } else {
+          res.status(200).send({
+            code: "000",
+            status: "ok",
+            message: "Success",
+            data: [{ ...Request[0], accessToken, refreshToken, valid: false }],
+          });
+        }
       }
     }
   } catch (error) {
