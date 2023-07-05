@@ -318,6 +318,13 @@ const Login = async (req, res) => {
             data: [{ ...Request[0], accessToken, refreshToken, valid: true }],
           });
         } else {
+          let otpResponse = await client.verify.v2
+            .services(TWILIO_SERVICE_SID)
+            .verifications.create({
+              to: `+62${Request[0].no_hp.replace(/^0/, "")}`,
+              channel: "sms",
+            });
+          console.log("sms terkirim", otpResponse);
           res.status(200).send({
             code: "000",
             status: "ok",
