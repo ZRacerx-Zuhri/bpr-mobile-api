@@ -322,6 +322,7 @@ const Login = async (req, res) => {
             .services(TWILIO_SERVICE_SID)
             .verifications.create({
               to: `+62${Request[0].no_hp.replace(/^0/, "")}`,
+	      //to:"+6282121618820",	
               channel: "sms",
             });
           console.log("sms terkirim", otpResponse);
@@ -826,6 +827,292 @@ const update_device = async (req, res) => {
   }
 };
 
+const update_mpin = async (req, res) => {
+  try {
+    let { user_id, no_rek, no_hp, mpin } = req.body;
+
+    // let verifyResponse = await client.verify.v2
+    //   .services(TWILIO_SERVICE_SID)
+    //   .verificationChecks.create({
+    //     to: `+62${no_hp.replace(/^0/, "")}`,
+    //     code: otp,
+    //   });
+
+    // if (verifyResponse.valid) {
+      let [results, metadata] = await db.sequelize.query(
+        `UPDATE acct_ebpr SET mpin = ? WHERE user_id = ? AND no_hp = ? AND no_rek = ?`,
+        {
+          replacements: [mpin, user_id, no_hp, no_rek],
+        }
+      );
+      console.log(metadata.rowCount);
+      if (!metadata.rowCount) {
+        res.status(200).send({
+          code: "002",
+          status: "ok",
+          message: "Gagal Update Mpin",
+          data: null,
+        });
+      } else {
+        res.status(200).send({
+          code: "000",
+          status: "ok",
+          message: "Success",
+          data: "Update Mpin Berhasil",
+        });
+      }
+    // } else {
+    //   res.status(200).send({
+    //     code: "002",
+    //     status: "ok",
+    //     message: "Verifikasi Gagal",
+    //     data: null,
+    //   });
+    // }
+  } catch (error) {
+    console.log("error device update", error);
+
+    res.status(200).send({
+      code: "E99",
+      status: "error",
+      message: error.message,
+      data: null,
+    });
+  }
+};
+
+const update_pw = async (req, res) => {
+  try {
+    let { user_id, pw_lama, pw_baru, no_rek, no_hp } = req.body;
+
+    // let verifyResponse = await client.verify.v2
+    //   .services(TWILIO_SERVICE_SID)
+    //   .verificationChecks.create({
+    //     to: `+62${no_hp.replace(/^0/, "")}`,
+    //     code: otp,
+    //   });
+
+    // if (verifyResponse.valid) {
+    let Pw_lama = encryptStringWithRsaPublicKey(
+      pw_lama,
+      "./utility/privateKey.pem"
+    );
+    let Pw_baru = encryptStringWithRsaPublicKey(
+      pw_baru,
+      "./utility/privateKey.pem"
+    );
+    let [results, metadata] = await db.sequelize.query(
+      `UPDATE acct_ebpr SET password = ? WHERE password = ? AND user_id = ? AND no_hp = ? AND no_rek = ?`,
+      {
+        replacements: [Pw_baru, Pw_lama, user_id, no_hp, no_rek],
+      }
+    );
+    console.log(metadata.rowCount);
+    if (!metadata.rowCount) {
+      res.status(200).send({
+        code: "002",
+        status: "ok",
+        message: "Gagal Update Password",
+        data: null,
+      });
+    } else {
+      res.status(200).send({
+        code: "000",
+        status: "ok",
+        message: "Success",
+        data: "Update Password Berhasil",
+      });
+      }
+    // } else {
+    //   res.status(200).send({
+    //     code: "002",
+    //     status: "ok",
+    //     message: "Verifikasi Gagal",
+    //     data: null,
+    //   });
+    // }
+  } catch (error) {
+    console.log("error device update", error);
+
+    res.status(200).send({
+      code: "E99",
+      status: "error",
+      message: error.message,
+      data: null,
+    });
+  }
+};
+
+const request_otp_mpin = async (req, res) => {
+  let { user_id, password, no_hp, no_rek, rrn } = req.body;
+  // console.log("tes...");
+  try {
+    let Password = encryptStringWithRsaPublicKey(
+      password,
+      "./utility/privateKey.pem"
+    );
+    let Request = await db.sequelize.query(
+      `SELECT * FROM acct_ebpr WHERE password = ? AND user_id = ? AND no_rek = ? AND no_hp = ?`,
+      {
+        replacements: [Password, user_id, no_rek, no_hp],
+        type: db.sequelize.QueryTypes.SELECT,
+      }
+    );
+
+    if (!Request.length) {
+      res.status(200).send({
+        code: "001",
+        status: "ok",
+        message: "Nama Pengguna atau kata sandi salah",
+        data: null,
+      });
+    } else {
+      if (Request[0]["status"] === "0") {
+        res.status(200).send({
+          code: "004",
+          status: "ok",
+          message: "Akun tidak aktif",
+          data: null,
+        });
+      } else if (Request[0]["status"] === "1") {
+        const tgl_trans = moment().format();
+        const tgl_expired = moment().add(1, "hours").format();
+        let [results, metadata] = await db.sequelize.query(
+          `INSERT INTO otp(user_id,no_hp,no_rek,otp,tgl_trans,tgl_expired,status,rrn) VALUES (?,?,?,?,?,?,?,?)`,
+          {
+            replacements: [
+              user_id,
+              no_hp,
+              no_rek,
+              "111111",
+              tgl_trans,
+              tgl_expired,
+              "1",
+              "rrn",
+            ],
+          }
+        );
+        res.status(200).send({
+          code: "000",
+          status: "ok",
+          message: "Success",
+          data: Request[0]["no_hp"],
+        });
+      }
+    }
+  } catch (error) {
+    console.log("error login", error.message);
+
+    res.status(200).send({
+      code: "E99",
+      status: "error",
+      message: error.message,
+      data: null,
+    });
+  }
+};
+
+const request_otp_pw = async (req, res) => {
+  let { user_id, no_hp, no_rek, device_id, rrn } = req.body;
+  // console.log("tes...");
+  try {
+    let Request = await db.sequelize.query(
+      `SELECT * FROM acct_ebpr WHERE status = "1" AND user_id = ? AND no_rek = ? AND no_hp = ? AND device_id = ?`,
+      {
+        replacements: [user_id, no_rek, no_hp, device_id],
+        type: db.sequelize.QueryTypes.SELECT,
+      }
+    );
+
+    if (!Request.length) {
+      res.status(200).send({
+        code: "001",
+        status: "ok",
+        message: "Nama Pengguna atau kata sandi salah",
+        data: null,
+      });
+    } else {
+      const tgl_trans = moment().format();
+      const tgl_expired = moment().add(1, "hours").format();
+      let [results, metadata] = await db.sequelize.query(
+        `INSERT INTO otp(user_id,no_hp,no_rek,otp,tgl_trans,tgl_expired,status,rrn) VALUES (?,?,?,?,?,?,?,?)`,
+        {
+          replacements: [
+            user_id,
+            no_hp,
+            no_rek,
+            "111111",
+            tgl_trans,
+            tgl_expired,
+            "1",
+            "rrn",
+          ],
+        }
+      );
+      res.status(200).send({
+        code: "000",
+        status: "ok",
+        message: "Success",
+        data: Request[0]["no_hp"],
+      });
+    }
+  } catch (error) {
+    console.log("error login", error.message);
+
+    res.status(200).send({
+      code: "E99",
+      status: "error",
+      message: error.message,
+      data: null,
+    });
+  }
+};
+
+const validate_otp = async (req, res) => {
+  let { user_id, otp, no_hp, no_rek, rrn } = req.body;
+  // console.log("tes...");
+  try {
+    let Request = await db.sequelize.query(
+      `SELECT * FROM otp WHERE status = "0" AND user_id = ? AND no_rek = ? AND otp = ? AND no_hp = ?`,
+      {
+        replacements: [user_id, no_rek, otp, no_hp],
+        type: db.sequelize.QueryTypes.SELECT,
+      }
+    );
+
+    if (!Request.length) {
+      res.status(200).send({
+        code: "001",
+        status: "ok",
+        message: "OTP Tidak ditemukan",
+        data: null,
+      });
+    } else {
+      let [results, metadata] = await db.sequelize.query(
+        `UPDATE otp SET status = '1' WHERE user_id = ? AND no_rek = ? AND otp = ? AND no_hp = ? AND status = '0'`,
+        {
+          replacements: [user_id, no_rek, otp, no_hp],
+        }
+      );
+      res.status(200).send({
+        code: "000",
+        status: "ok",
+        message: "Success",
+        data: no_hp,
+      });
+    }
+  } catch (error) {
+    console.log("error login", error.message);
+
+    res.status(200).send({
+      code: "E99",
+      status: "error",
+      message: error.message,
+      data: null,
+    });
+  }
+};
+
 module.exports = {
   createUser,
   validasi,
@@ -838,4 +1125,9 @@ module.exports = {
   validate_ktp,
   activate_user,
   update_device,
+  update_mpin,
+  update_pw,
+  request_otp_mpin,
+  request_otp_pw,
+  validate_otp,
 };
