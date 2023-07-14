@@ -322,7 +322,6 @@ const Login = async (req, res) => {
             .services(TWILIO_SERVICE_SID)
             .verifications.create({
               to: `+62${Request[0].no_hp.replace(/^0/, "")}`,
-	      //to:"+6282121618820",	
               channel: "sms",
             });
           console.log("sms terkirim", otpResponse);
@@ -831,44 +830,28 @@ const update_mpin = async (req, res) => {
   try {
     let { user_id, no_rek, no_hp, mpin } = req.body;
 
-    // let verifyResponse = await client.verify.v2
-    //   .services(TWILIO_SERVICE_SID)
-    //   .verificationChecks.create({
-    //     to: `+62${no_hp.replace(/^0/, "")}`,
-    //     code: otp,
-    //   });
-
-    // if (verifyResponse.valid) {
-      let [results, metadata] = await db.sequelize.query(
-        `UPDATE acct_ebpr SET mpin = ? WHERE user_id = ? AND no_hp = ? AND no_rek = ?`,
-        {
-          replacements: [mpin, user_id, no_hp, no_rek],
-        }
-      );
-      console.log(metadata.rowCount);
-      if (!metadata.rowCount) {
-        res.status(200).send({
-          code: "002",
-          status: "ok",
-          message: "Gagal Update Mpin",
-          data: null,
-        });
-      } else {
-        res.status(200).send({
-          code: "000",
-          status: "ok",
-          message: "Success",
-          data: "Update Mpin Berhasil",
-        });
+    let [results, metadata] = await db.sequelize.query(
+      `UPDATE acct_ebpr SET mpin = ? WHERE user_id = ? AND no_hp = ? AND no_rek = ?`,
+      {
+        replacements: [mpin, user_id, no_hp, no_rek],
       }
-    // } else {
-    //   res.status(200).send({
-    //     code: "002",
-    //     status: "ok",
-    //     message: "Verifikasi Gagal",
-    //     data: null,
-    //   });
-    // }
+    );
+    console.log(metadata.rowCount);
+    if (!metadata.rowCount) {
+      res.status(200).send({
+        code: "002",
+        status: "ok",
+        message: "Gagal Update Mpin",
+        data: null,
+      });
+    } else {
+      res.status(200).send({
+        code: "000",
+        status: "ok",
+        message: "Success",
+        data: "Update Mpin Berhasil",
+      });
+    }
   } catch (error) {
     console.log("error device update", error);
 
@@ -922,7 +905,7 @@ const update_pw = async (req, res) => {
         message: "Success",
         data: "Update Password Berhasil",
       });
-      }
+    }
     // } else {
     //   res.status(200).send({
     //     code: "002",
@@ -977,6 +960,13 @@ const request_otp_mpin = async (req, res) => {
       } else if (Request[0]["status"] === "1") {
         const tgl_trans = moment().format();
         const tgl_expired = moment().add(1, "hours").format();
+        let otpResponse = await client.verify.v2
+          .services(TWILIO_SERVICE_SID)
+          .verifications.create({
+            to: `+62${Request[0].no_hp.replace(/^0/, "")}`,
+            channel: "sms",
+          });
+        console.log("sms terkirim", otpResponse);
         let [results, metadata] = await db.sequelize.query(
           `INSERT INTO otp(user_id,no_hp,no_rek,otp,tgl_trans,tgl_expired,status,rrn) VALUES (?,?,?,?,?,?,?,?)`,
           {
