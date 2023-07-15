@@ -329,7 +329,7 @@ const Login = async (req, res) => {
             code: "000",
             status: "ok",
             message: "Success",
-            data: [{ ...Request[0], accessToken, refreshToken, valid: false }],
+            data: [{ ...Request[0], accessToken, refreshToken, valid: true }],
           });
         }
       }
@@ -829,15 +829,23 @@ const update_device = async (req, res) => {
 const update_mpin = async (req, res) => {
   try {
     let { user_id, no_rek, no_hp, mpin } = req.body;
-    // let Mpin = encryptStringWithRsaPublicKey(mpin, "./utility/privateKey.pem");
-    let Mpin = encryptStringWithRsaPublicKey(
+
+    mpin = encryptStringWithRsaPublicKey(
       `${mpin}${no_hp.substring(no_hp.length - 4, no_hp.length)}`,
       "./utility/privateKey.pem"
     );
+
+    let decrypted = decryptStringWithRsaPrivateKey(
+      mpin,
+      "./utility/publicKey.pem"
+    );
+
+    console.log("decrypt", decrypted);
+
     let [results, metadata] = await db.sequelize.query(
       `UPDATE acct_ebpr SET mpin = ? WHERE user_id = ? AND no_hp = ? AND no_rek = ?`,
       {
-        replacements: [Mpin, user_id, no_hp, no_rek],
+        replacements: [mpin, user_id, no_hp, no_rek],
       }
     );
     console.log(metadata.rowCount);

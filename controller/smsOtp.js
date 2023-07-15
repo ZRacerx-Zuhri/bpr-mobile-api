@@ -38,12 +38,21 @@ const verifyOtp = async (req, res) => {
         to: `+62${no_hp.replace(/^0/, "")}`,
         code: otp,
       });
-    res.status(200).send({
-      code: "000",
-      status: "ok",
-      message: "Success",
-      data: verifyResponse,
-    });
+    if (verifyResponse.valid) {
+      res.status(200).send({
+        code: "000",
+        status: "ok",
+        message: "Success",
+        data: verifyResponse,
+      });
+    } else {
+      res.status(200).send({
+        code: "002",
+        status: "ok",
+        message: "Verifikasi Gagal",
+        data: null,
+      });
+    }
   } catch (error) {
     console.log("error veriotp", error.message);
     res.status(200).send({
