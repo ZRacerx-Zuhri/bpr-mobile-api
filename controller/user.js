@@ -845,7 +845,7 @@ const update_mpin = async (req, res) => {
     let [results, metadata] = await db.sequelize.query(
       `UPDATE acct_ebpr SET mpin = ? WHERE user_id = ? AND no_hp = ? AND no_rek = ?`,
       {
-        replacements: [mpin, user_id, no_hp, no_rek],
+        replacements: [Mpin, user_id, no_hp, no_rek],
       }
     );
     console.log(metadata.rowCount);
