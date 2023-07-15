@@ -829,15 +829,7 @@ const update_device = async (req, res) => {
 const update_mpin = async (req, res) => {
   try {
     let { user_id, no_rek, no_hp, mpin } = req.body;
-
-    // let verifyResponse = await client.verify.v2
-    //   .services(TWILIO_SERVICE_SID)
-    //   .verificationChecks.create({
-    //     to: `+62${no_hp.replace(/^0/, "")}`,
-    //     code: otp,
-    //   });
-
-    // if (verifyResponse.valid) {
+    // let Mpin = encryptStringWithRsaPublicKey(mpin, "./utility/privateKey.pem");
     let Mpin = encryptStringWithRsaPublicKey(
       `${mpin}${no_hp.substring(no_hp.length - 4, no_hp.length)}`,
       "./utility/privateKey.pem"
@@ -995,13 +987,13 @@ const request_otp_mpin = async (req, res) => {
           data: null,
         });
       } else if (Request[0]["status"] === "1") {
-        let otpResponse = await client.verify.v2
-          .services(TWILIO_SERVICE_SID)
-          .verifications.create({
-            to: `+62${Request[0].no_hp.replace(/^0/, "")}`,
-            channel: "sms",
-          });
-        console.log("sms terkirim", otpResponse);
+        // let otpResponse = await client.verify.v2
+        //   .services(TWILIO_SERVICE_SID)
+        //   .verifications.create({
+        //     to: `+62${Request[0].no_hp.replace(/^0/, "")}`,
+        //     channel: "sms",
+        //   });
+        // console.log("sms terkirim", otpResponse);
         // const tgl_trans = moment().format();
         // const tgl_expired = moment().add(1, "hours").format();
         // let [results, metadata] = await db.sequelize.query(
