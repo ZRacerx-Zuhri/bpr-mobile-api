@@ -1061,11 +1061,11 @@ const request_otp_mpin = async (req, res) => {
 };
 
 const request_update_pw = async (req, res) => {
-  let { user_id, no_hp, no_rek, device_id, rrn } = req.body;
+  let { user_id, no_hp } = req.body;
   // console.log("tes...");
   try {
     let Request = await db.sequelize.query(
-      `SELECT * FROM acct_ebpr WHERE status = "1" AND user_id = ? AND no_hp = ?`,
+      `SELECT * FROM acct_ebpr WHERE status = '1' AND user_id = ? AND no_hp = ?`,
       {
         replacements: [user_id, no_hp],
         type: db.sequelize.QueryTypes.SELECT,
@@ -1076,7 +1076,7 @@ const request_update_pw = async (req, res) => {
       res.status(200).send({
         code: "001",
         status: "ok",
-        message: "Nama Pengguna atau kata sandi salah",
+        message: "User ID Tidak Ditemukan",
         data: null,
       });
     } else {
@@ -1109,7 +1109,7 @@ const validate_otp = async (req, res) => {
   // console.log("tes...");
   try {
     let Request = await db.sequelize.query(
-      `SELECT * FROM otp WHERE status = "0" AND user_id = ? AND no_rek = ? AND otp = ? AND no_hp = ?`,
+      `SELECT * FROM otp WHERE status = '0' AND user_id = ? AND no_rek = ? AND otp = ? AND no_hp = ?`,
       {
         replacements: [user_id, no_rek, otp, no_hp],
         type: db.sequelize.QueryTypes.SELECT,
