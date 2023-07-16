@@ -894,7 +894,7 @@ const update_mpin = async (req, res) => {
 };
 const update_pw = async (req, res) => {
   try {
-    let { user_id, pw_lama, pw_baru, no_rek, no_hp, mpin } = req.body;
+    let { user_id, pw_baru, no_rek, no_hp, mpin } = req.body;
 
     // let verifyResponse = await client.verify.v2
     //   .services(TWILIO_SERVICE_SID)
@@ -904,38 +904,14 @@ const update_pw = async (req, res) => {
     //   });
 
     // if (verifyResponse.valid) {
-    let Pw_lama = encryptStringWithRsaPublicKey(
-      pw_lama,
-      "./utility/privateKey.pem"
-    );
     let Pw_baru = encryptStringWithRsaPublicKey(
       pw_baru,
       "./utility/privateKey.pem"
     );
-    let Mpin = encryptStringWithRsaPublicKey(
-      `${mpin}${no_hp.substring(no_hp.length - 4, no_hp.length)}`,
-      "./utility/privateKey.pem"
-    );
-    let Request = await db.sequelize.query(
-      `SELECT * FROM acct_ebpr WHERE password = ? AND user_id = ? AND no_rek = ? AND no_hp = ? AND mpin = ?`,
-      {
-        replacements: [Pw_lama, user_id, no_rek, no_hp, Mpin],
-        type: db.sequelize.QueryTypes.SELECT,
-      }
-    );
-
-    if (!Request.length) {
-      res.status(200).send({
-        code: "001",
-        status: "ok",
-        message: "Nama Pengguna atau kata sandi salah",
-        data: null,
-      });
-    } else {
       let [results, metadata] = await db.sequelize.query(
-        `UPDATE acct_ebpr SET password = ? WHERE password = ? AND user_id = ? AND no_hp = ? AND no_rek = ?`,
+        `UPDATE acct_ebpr SET password = ? WHERE user_id = ? AND no_hp = ? AND no_rek = ?`,
         {
-          replacements: [Pw_baru, Pw_lama, user_id, no_hp, no_rek],
+          replacements: [Pw_baru, user_id, no_hp, no_rek],
         }
       );
       console.log(metadata.rowCount);
@@ -954,7 +930,6 @@ const update_pw = async (req, res) => {
           data: "Update Password Berhasil",
         });
       }
-    }
     // } else {
     //   res.status(200).send({
     //     code: "002",
