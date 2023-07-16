@@ -912,10 +912,14 @@ const update_pw = async (req, res) => {
       pw_baru,
       "./utility/privateKey.pem"
     );
+    let Mpin = encryptStringWithRsaPublicKey(
+      `${mpin}${no_hp.substring(no_hp.length - 4, no_hp.length)}`,
+      "./utility/privateKey.pem"
+    );
     let Request = await db.sequelize.query(
       `SELECT * FROM acct_ebpr WHERE password = ? AND user_id = ? AND no_rek = ? AND no_hp = ? AND mpin = ?`,
       {
-        replacements: [Pw_lama, user_id, no_rek, no_hp, mpin],
+        replacements: [Pw_lama, user_id, no_rek, no_hp, Mpin],
         type: db.sequelize.QueryTypes.SELECT,
       }
     );
