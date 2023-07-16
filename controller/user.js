@@ -828,7 +828,7 @@ const update_device = async (req, res) => {
 
 const update_mpin = async (req, res) => {
   try {
-    let { user_id, no_rek, no_hp, mpin } = req.body;
+    let { user_id, no_rek, no_hp, bpr_id, mpin } = req.body;
 
     // let verifyResponse = await client.verify.v2
     //   .services(TWILIO_SERVICE_SID)
@@ -842,20 +842,30 @@ const update_mpin = async (req, res) => {
       `${mpin}${no_hp.substring(no_hp.length - 4, no_hp.length)}`,
       "./utility/privateKey.pem"
     );
-    let [results, metadata] = await db.sequelize.query(
-      `UPDATE acct_ebpr SET mpin = ? WHERE user_id = ? AND no_hp = ? AND no_rek = ?`,
-      {
-        replacements: [Mpin, user_id, no_hp, no_rek],
-      }
+    const trx_code = "0600";
+    const trx_type = "TRX";
+    const data = {
+      user_id,
+      no_rek,
+      no_hp,
+      bpr_id,
+      trx_code,
+      trx_type,
+      pin: Mpin
+    };
+    console.log(data);
+    const request = await connect_axios(
+      URL_GATEWAY,
+      "gateway_bpr/inquiry_account",
+      data
     );
-    console.log(metadata.rowCount);
-    if (!metadata.rowCount) {
-      res.status(200).send({
-        code: "002",
-        status: "ok",
-        message: "Gagal Update Mpin",
-        data: null,
-      });
+    console.log(request);
+    if (request.code !== "000") {
+      console.log(request);
+      request.data = {
+        status: "Gagal, Akun Tidak Ditemukan",
+      };
+      res.status(200).send(request);
     } else {
       res.status(200).send({
         code: "000",
@@ -1028,6 +1038,7 @@ const request_otp_mpin = async (req, res) => {
             no_hp: Request[0]["no_hp"],
             no_rek: Request[0]["no_rek"],
             user_id: Request[0]["user_id"],
+            bpr_id: Request[0]["bpr_id"],
           },
         });
       }
