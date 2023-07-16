@@ -834,21 +834,6 @@ const update_mpin = async (req, res) => {
       `${mpin}${no_hp.substring(no_hp.length - 4, no_hp.length)}`,
       "./utility/privateKey.pem"
     );
-<<<<<<< HEAD
-
-    let decrypted = decryptStringWithRsaPrivateKey(
-      mpin,
-      "./utility/publicKey.pem"
-    );
-
-    console.log("decrypt", decrypted);
-
-    let [results, metadata] = await db.sequelize.query(
-      `UPDATE acct_ebpr SET mpin = ? WHERE user_id = ? AND no_hp = ? AND no_rek = ?`,
-      {
-        replacements: [mpin, user_id, no_hp, no_rek],
-      }
-=======
     const trx_code = "0600";
     const trx_type = "TRX";
     const data = {
@@ -858,14 +843,13 @@ const update_mpin = async (req, res) => {
       bpr_id,
       trx_code,
       trx_type,
-      pin: Mpin
+      pin: Mpin,
     };
     console.log(data);
     const request = await connect_axios(
       URL_GATEWAY,
       "gateway_bpr/inquiry_account",
       data
->>>>>>> f73815f4fafa0720f6c0753ef56fe14c0409aa0f
     );
     console.log(request);
     if (request.code !== "000") {
