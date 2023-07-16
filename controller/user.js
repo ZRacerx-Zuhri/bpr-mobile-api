@@ -861,9 +861,8 @@ const update_mpin = async (req, res) => {
     );
     console.log(request);
     if (request.code !== "000") {
-      console.log(request);
       request.data = {
-        status: "Gagal, Akun Tidak Ditemukan",
+        status: request.message,
       };
       res.status(200).send(request);
     } else {
