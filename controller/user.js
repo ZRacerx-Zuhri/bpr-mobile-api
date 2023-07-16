@@ -828,12 +828,13 @@ const update_device = async (req, res) => {
 
 const update_mpin = async (req, res) => {
   try {
-    let { user_id, no_rek, no_hp, mpin } = req.body;
+    let { user_id, no_rek, no_hp, bpr_id, mpin } = req.body;
 
     mpin = encryptStringWithRsaPublicKey(
       `${mpin}${no_hp.substring(no_hp.length - 4, no_hp.length)}`,
       "./utility/privateKey.pem"
     );
+<<<<<<< HEAD
 
     let decrypted = decryptStringWithRsaPrivateKey(
       mpin,
@@ -847,15 +848,31 @@ const update_mpin = async (req, res) => {
       {
         replacements: [mpin, user_id, no_hp, no_rek],
       }
+=======
+    const trx_code = "0600";
+    const trx_type = "TRX";
+    const data = {
+      user_id,
+      no_rek,
+      no_hp,
+      bpr_id,
+      trx_code,
+      trx_type,
+      pin: Mpin
+    };
+    console.log(data);
+    const request = await connect_axios(
+      URL_GATEWAY,
+      "gateway_bpr/inquiry_account",
+      data
+>>>>>>> f73815f4fafa0720f6c0753ef56fe14c0409aa0f
     );
-    console.log(metadata.rowCount);
-    if (!metadata.rowCount) {
-      res.status(200).send({
-        code: "002",
-        status: "ok",
-        message: "Gagal Update Mpin",
-        data: null,
-      });
+    console.log(request);
+    if (request.code !== "000") {
+      request.data = {
+        status: request.message,
+      };
+      res.status(200).send(request);
     } else {
       res.status(200).send({
         code: "000",
@@ -1028,6 +1045,7 @@ const request_otp_mpin = async (req, res) => {
             no_hp: Request[0]["no_hp"],
             no_rek: Request[0]["no_rek"],
             user_id: Request[0]["user_id"],
+            bpr_id: Request[0]["bpr_id"],
           },
         });
       }
