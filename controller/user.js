@@ -896,48 +896,32 @@ const update_pw = async (req, res) => {
   try {
     let { user_id, pw_baru, no_rek, no_hp, mpin } = req.body;
 
-    // let verifyResponse = await client.verify.v2
-    //   .services(TWILIO_SERVICE_SID)
-    //   .verificationChecks.create({
-    //     to: `+62${no_hp.replace(/^0/, "")}`,
-    //     code: otp,
-    //   });
-
-    // if (verifyResponse.valid) {
     let Pw_baru = encryptStringWithRsaPublicKey(
       pw_baru,
       "./utility/privateKey.pem"
     );
-      let [results, metadata] = await db.sequelize.query(
-        `UPDATE acct_ebpr SET password = ? WHERE user_id = ? AND no_hp = ? AND no_rek = ?`,
-        {
-          replacements: [Pw_baru, user_id, no_hp, no_rek],
-        }
-      );
-      console.log(metadata.rowCount);
-      if (!metadata.rowCount) {
-        res.status(200).send({
-          code: "002",
-          status: "ok",
-          message: "Gagal Update Password",
-          data: null,
-        });
-      } else {
-        res.status(200).send({
-          code: "000",
-          status: "ok",
-          message: "Success",
-          data: "Update Password Berhasil",
-        });
+    let [results, metadata] = await db.sequelize.query(
+      `UPDATE acct_ebpr SET password = ? WHERE user_id = ? AND no_hp = ? AND no_rek = ?`,
+      {
+        replacements: [Pw_baru, user_id, no_hp, no_rek],
       }
-    // } else {
-    //   res.status(200).send({
-    //     code: "002",
-    //     status: "ok",
-    //     message: "Verifikasi Gagal",
-    //     data: null,
-    //   });
-    // }
+    );
+    console.log(metadata.rowCount);
+    if (!metadata.rowCount) {
+      res.status(200).send({
+        code: "002",
+        status: "ok",
+        message: "Gagal Update Password",
+        data: null,
+      });
+    } else {
+      res.status(200).send({
+        code: "000",
+        status: "ok",
+        message: "Success",
+        data: "Update Password Berhasil",
+      });
+    }
   } catch (error) {
     console.log("error device update", error);
 
