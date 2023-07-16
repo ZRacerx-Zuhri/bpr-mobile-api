@@ -924,7 +924,7 @@ const update_pw = async (req, res) => {
         "./utility/privateKey.pem"
       );
       let pin = encryptStringWithRsaPublicKey(
-        mpin,
+        `${mpin}${no_hp.substring(no_hp.length - 4, no_hp.length)}`,
         "./utility/privateKey.pem"
       );
       const trx_code = "0500";
