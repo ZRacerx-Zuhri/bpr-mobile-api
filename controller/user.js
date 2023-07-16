@@ -1060,14 +1060,14 @@ const request_otp_mpin = async (req, res) => {
   }
 };
 
-const request_otp_pw = async (req, res) => {
+const request_update_pw = async (req, res) => {
   let { user_id, no_hp, no_rek, device_id, rrn } = req.body;
   // console.log("tes...");
   try {
     let Request = await db.sequelize.query(
-      `SELECT * FROM acct_ebpr WHERE status = "1" AND user_id = ? AND no_rek = ? AND no_hp = ? AND device_id = ?`,
+      `SELECT * FROM acct_ebpr WHERE status = "1" AND user_id = ? AND no_hp = ?`,
       {
-        replacements: [user_id, no_rek, no_hp, device_id],
+        replacements: [user_id, no_hp],
         type: db.sequelize.QueryTypes.SELECT,
       }
     );
@@ -1080,28 +1080,16 @@ const request_otp_pw = async (req, res) => {
         data: null,
       });
     } else {
-      const tgl_trans = moment().format();
-      const tgl_expired = moment().add(1, "hours").format();
-      let [results, metadata] = await db.sequelize.query(
-        `INSERT INTO otp(user_id,no_hp,no_rek,otp,tgl_trans,tgl_expired,status,rrn) VALUES (?,?,?,?,?,?,?,?)`,
-        {
-          replacements: [
-            user_id,
-            no_hp,
-            no_rek,
-            "111111",
-            tgl_trans,
-            tgl_expired,
-            "1",
-            "rrn",
-          ],
-        }
-      );
       res.status(200).send({
         code: "000",
         status: "ok",
         message: "Success",
-        data: Request[0]["no_hp"],
+        data: {
+          no_hp: Request[0]["no_hp"],
+          no_rek: Request[0]["no_rek"],
+          user_id: Request[0]["user_id"],
+          bpr_id: Request[0]["bpr_id"],
+        },
       });
     }
   } catch (error) {
@@ -1176,6 +1164,6 @@ module.exports = {
   update_mpin,
   update_pw,
   request_otp_mpin,
-  request_otp_pw,
+  request_update_pw,
   validate_otp,
 };
