@@ -657,20 +657,20 @@ const activate_user = async (req, res) => {
       });
     } else {
       let acct = await db.sequelize.query(
-        `SELECT * FROM acct_ebpr WHERE bpr_id = ? AND user_id = ? AND status != '6'`,
+        `SELECT * FROM acct_ebpr WHERE bpr_id = ? AND no_rek = ? AND no_hp = ? AND status != '6'`,
         {
-          replacements: [bpr_id, user_id],
+          replacements: [bpr_id, no_rek, no_hp],
           type: db.sequelize.QueryTypes.SELECT,
         }
       );
-      if (acct.length) {
+      if ((acct.length && acct[0].user_id === user_id) && (acct[0].status != "0" || acct[0].status != "4")) {
         res.status(200).send({
           code: "002",
           status: "Failed",
           message: "Gagal, User ID telah digunakan",
           data: null,
         });
-      } else if (!acct.length) {
+      } else {
         let Password = encryptStringWithRsaPublicKey(
           password,
           "./utility/privateKey.pem"
@@ -724,40 +724,70 @@ const activate_user = async (req, res) => {
             run_number.length - 4,
             run_number.length
           )}`;
-          let [results, metadata] = await db.sequelize.query(
-            `INSERT INTO acct_ebpr(unique_id,no_hp,bpr_id,no_rek,no_ktp,nama,nama_rek,user_id,password,status) VALUES (?,?,?,?,?,?,?,?,?,?)`,
-            {
-              replacements: [
-                unique_id,
-                no_hp,
-                bpr_id,
-                no_rek,
-                no_ktp,
-                nama,
-                request.data.nama_rek,
-                user_id,
-                Password,
-                status,
-              ],
+          
+          if (acct[0].status === "4") {
+            let [results, metadata] = await db.sequelize.query(
+                `UPDATE acct_ebpr SET status = ? WHERE no_hp = ? AND no_rek = ?`,
+                {
+                replacements: [status, no_hp, no_rek],
+                }
+            );
+            console.log(metadata.rowCount);
+            if (!metadata.rowCount) {
+              res.status(200).send({
+              code: "002",
+              status: "ok",
+              message: "Gagal Update Status",
+              data: null,
+              });
+            } else {
+              request["status"] = "Akun telah diaktifkan";
+              console.log({
+                code: "000",
+                status: "ok",
+                message: "Success",
+                data: request,
+              });
+              res.status(200).send({
+                code: "000",
+                status: "ok",
+                message: "Success",
+                data: request,
+              });
             }
-          );
-          if (status == "0") {
-            request["status"] = "Akun telah dinon-aktifkan";
-          } else if (status == "1") {
+          } else {
+            let [results, metadata] = await db.sequelize.query(
+              `INSERT INTO acct_ebpr(unique_id,no_hp,bpr_id,no_rek,no_ktp,nama,nama_rek,user_id,password,status) VALUES (?,?,?,?,?,?,?,?,?,?)`,
+              {
+                replacements: [
+                  unique_id,
+                  no_hp,
+                  bpr_id,
+                  no_rek,
+                  no_ktp,
+                  nama,
+                  request.data.nama_rek,
+                  user_id,
+                  Password,
+                  status,
+                ],
+              }
+            );
             request["status"] = "Akun telah diaktifkan";
+            console.log({
+              code: "000",
+              status: "ok",
+              message: "Success",
+              data: request,
+            });
+            res.status(200).send({
+              code: "000",
+              status: "ok",
+              message: "Success",
+              data: request,
+            });
           }
-          console.log({
-            code: "000",
-            status: "ok",
-            message: "Success",
-            data: request,
-          });
-          res.status(200).send({
-            code: "000",
-            status: "ok",
-            message: "Success",
-            data: request,
-          });
+          
         }
       }
     }
