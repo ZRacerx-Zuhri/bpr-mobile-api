@@ -51,8 +51,6 @@ const connect_axios = async (url, route, data) => {
   }
 };
 
-const URL_GATEWAY = process.env.URL_GATEWAY;
-
 const createUser = async (req, res) => {
   let { pin } = req.body;
   console.log(pin);
@@ -78,41 +76,57 @@ const createUser = async (req, res) => {
 const saldo = async (req, res) => {
   let { no_rek, nama_rek, bpr_id } = req.body;
   try {
-    const trx_code = "0400";
-    const trx_type = "TRX";
-    const tgl_transmis = moment().format("YYMMDDHHmmss");
-    const data = {
-      no_rek,
-      bpr_id,
-      trx_code,
-      trx_type,
-      tgl_trans: moment().format("YYMMDDHHmmss"),
-      tgl_transmis: moment().format("YYMMDDHHmmss"),
-      rrn: "000000",
-    };
-    console.log("data");
-    console.log(data);
-    // const request = await connect_axios(
-    //   "https://gw-dev-api.medtransdigital.com/",
-    //   "gateway_bpr/inquiry_account",
-    //   data
-    // );
-    const request = await connect_axios(
-      URL_GATEWAY,
-      "gateway_bpr/inquiry_account",
-      data
+    let bpr = await db1.sequelize.query(
+      `SELECT * FROM kd_bpr WHERE bpr_id = ? AND status = '1'`,
+      {
+        replacements: [bpr_id],
+        type: db.sequelize.QueryTypes.SELECT,
+      }
     );
-    if (request.code !== "000") {
-      console.log(request);
-      res.status(200).send(request);
-    } else {
-      console.log(request);
+    if (!bpr.length) {
       res.status(200).send({
-        code: "000",
-        status: "ok",
-        message: "Success",
-        data: request,
+        code: "002",
+        status: "Failed",
+        message: "Gagal, Inquiry BPR Tidak Ditemukan",
+        data: [],
       });
+    } else {
+      const trx_code = "0400";
+      const trx_type = "TRX";
+      const tgl_transmis = moment().format("YYMMDDHHmmss");
+      const data = {
+        no_rek,
+        bpr_id,
+        trx_code,
+        trx_type,
+        tgl_trans: moment().format("YYMMDDHHmmss"),
+        tgl_transmis: moment().format("YYMMDDHHmmss"),
+        rrn: "000000",
+      };
+      console.log("data");
+      console.log(data);
+      // const request = await connect_axios(
+      //   "https://gw-dev-api.medtransdigital.com/",
+      //   "gateway_bpr/inquiry_account",
+      //   data
+      // );
+      const request = await connect_axios(
+        bpr[0].gateway,
+        "gateway_bpr/inquiry_account",
+        data
+      );
+      if (request.code !== "000") {
+        console.log(request);
+        res.status(200).send(request);
+      } else {
+        console.log(request);
+        res.status(200).send({
+          code: "000",
+          status: "ok",
+          message: "Success",
+          data: request,
+        });
+      }
     }
   } catch (error) {
     console.log("error validasi", error);
@@ -442,7 +456,7 @@ const inquiry_account = async (req, res) => {
         rrn,
       };
       const request = await connect_axios(
-        URL_GATEWAY,
+        bpr[0].gateway,
         "gateway_bpr/inquiry_account",
         data
       );
@@ -534,7 +548,7 @@ const validate_user = async (req, res) => {
       console.log("data");
       console.log(data);
       const request = await connect_axios(
-        URL_GATEWAY,
+        bpr[0].gateway,
         "gateway_bpr/inquiry_account",
         data
       );
@@ -657,105 +671,82 @@ const activate_user = async (req, res) => {
       });
     } else {
       let acct = await db.sequelize.query(
-        `SELECT * FROM acct_ebpr WHERE bpr_id = ? AND no_rek = ? AND no_hp = ? AND status != '6'`,
+        `SELECT * FROM acct_ebpr WHERE bpr_id = ? AND no_rek = ? AND no_hp = ?`,
         {
           replacements: [bpr_id, no_rek, no_hp],
           type: db.sequelize.QueryTypes.SELECT,
         }
       );
-      if ((acct.length && acct[0].user_id === user_id) && (acct[0].status != "0" || acct[0].status != "4")) {
-        res.status(200).send({
-          code: "002",
-          status: "Failed",
-          message: "Gagal, User ID telah digunakan",
-          data: null,
-        });
-      } else {
-        let Password = encryptStringWithRsaPublicKey(
-          password,
-          "./utility/privateKey.pem"
+      if (!acct.length) {
+        let cek_user = await db.sequelize.query(
+          `SELECT * FROM acct_ebpr WHERE user_id = ?`,
+          {
+            replacements: [user_id],
+            type: db.sequelize.QueryTypes.SELECT,
+          }
         );
-        console.log(`${(parseInt(pin) + 111111 - 999999) / 2}`);
-        console.log(`${pin}${no_hp.substring(no_hp.length - 4, no_hp.length)}`);
-        let mpin = encryptStringWithRsaPublicKey(
-          `${pin}${no_hp.substring(no_hp.length - 4, no_hp.length)}`,
-          "./utility/privateKey.pem"
-        );
-        const trx_code = "0200";
-        const trx_type = "TRX";
-        const tgl_transmis = moment().format("YYMMDDHHmmss");
-        const data = {
-          no_rek,
-          no_hp,
-          bpr_id,
-          trx_code,
-          trx_type,
-          user_id,
-          password: Password,
-          pin: mpin,
-          status,
-          tgl_trans,
-          tgl_transmis,
-          rrn,
-        };
-        console.log(data);
-        const request = await connect_axios(
-          URL_GATEWAY,
-          "gateway_bpr/inquiry_account",
-          data
-        );
-        console.log(request);
-        if (request.code !== "000") {
-          console.log(request);
-          request.data = {
-            status: "Gagal, Akun Tidak Ditemukan",
-          };
-          res.status(200).send(request);
+        if (cek_user.length) {
+          res.status(200).send({
+            code: "002",
+            status: "Failed",
+            message: "Gagal, User ID telah digunakan",
+            data: null,
+          });
         } else {
-          let unique_id = moment().format("DDMMYY");
-          let cek_unique_id = await db.sequelize.query(
-            `SELECT * FROM acct_ebpr WHERE unique_id LIKE '%${unique_id}%'`,
-            {
-              type: db.sequelize.QueryTypes.SELECT,
-            }
+          let Password = encryptStringWithRsaPublicKey(
+            password,
+            "./utility/privateKey.pem"
           );
-          let run_number = `000${cek_unique_id.length + 1}`;
-          unique_id = `${bpr_id}${unique_id}${run_number.substring(
-            run_number.length - 4,
-            run_number.length
-          )}`;
-          
-          if (acct[0].status === "4") {
-            let [results, metadata] = await db.sequelize.query(
-                `UPDATE acct_ebpr SET status = ? WHERE no_hp = ? AND no_rek = ?`,
-                {
-                replacements: [status, no_hp, no_rek],
-                }
-            );
-            console.log(metadata.rowCount);
-            if (!metadata.rowCount) {
-              res.status(200).send({
-              code: "002",
-              status: "ok",
-              message: "Gagal Update Status",
-              data: null,
-              });
-            } else {
-              request["status"] = "Akun telah diaktifkan";
-              console.log({
-                code: "000",
-                status: "ok",
-                message: "Success",
-                data: request,
-              });
-              res.status(200).send({
-                code: "000",
-                status: "ok",
-                message: "Success",
-                data: request,
-              });
-            }
+          console.log(`${(parseInt(pin) + 111111 - 999999) / 2}`);
+          console.log(`${pin}${no_hp.substring(no_hp.length - 4, no_hp.length)}`);
+          let mpin = encryptStringWithRsaPublicKey(
+            `${pin}${no_hp.substring(no_hp.length - 4, no_hp.length)}`,
+            "./utility/privateKey.pem"
+          );
+          const trx_code = "0200";
+          const trx_type = "TRX";
+          const tgl_transmis = moment().format("YYMMDDHHmmss");
+          const data = {
+            no_rek,
+            no_hp,
+            bpr_id,
+            trx_code,
+            trx_type,
+            user_id,
+            password: Password,
+            pin: mpin,
+            status,
+            tgl_trans,
+            tgl_transmis,
+            rrn,
+          };
+          console.log(data);
+          const request = await connect_axios(
+            bpr[0].gateway,
+            "gateway_bpr/inquiry_account",
+            data
+          );
+          console.log(request);
+          if (request.code !== "000") {
+            console.log(request);
+            request.data = {
+              status: "Gagal, Akun Tidak Ditemukan",
+            };
+            res.status(200).send(request);
           } else {
+            let unique_id = moment().format("DDMMYY");
+            let cek_unique_id = await db.sequelize.query(
+              `SELECT * FROM acct_ebpr WHERE unique_id LIKE '%${unique_id}%'`,
+              {
+                type: db.sequelize.QueryTypes.SELECT,
+              }
+            );
+            let run_number = `000${cek_unique_id.length + 1}`;
+            unique_id = `${bpr_id}${unique_id}${run_number.substring(
+              run_number.length - 4,
+              run_number.length
+            )}`;
+            
             let [results, metadata] = await db.sequelize.query(
               `INSERT INTO acct_ebpr(unique_id,no_hp,bpr_id,no_rek,no_ktp,nama,nama_rek,user_id,password,status) VALUES (?,?,?,?,?,?,?,?,?,?)`,
               {
@@ -787,7 +778,78 @@ const activate_user = async (req, res) => {
               data: request,
             });
           }
-          
+        }
+      } else {
+        let Password = encryptStringWithRsaPublicKey(
+          password,
+          "./utility/privateKey.pem"
+        );
+        console.log(`${(parseInt(pin) + 111111 - 999999) / 2}`);
+        console.log(`${pin}${no_hp.substring(no_hp.length - 4, no_hp.length)}`);
+        let mpin = encryptStringWithRsaPublicKey(
+          `${pin}${no_hp.substring(no_hp.length - 4, no_hp.length)}`,
+          "./utility/privateKey.pem"
+        );
+        const trx_code = "0200";
+        const trx_type = "TRX";
+        const tgl_transmis = moment().format("YYMMDDHHmmss");
+        const data = {
+          no_rek,
+          no_hp,
+          bpr_id,
+          trx_code,
+          trx_type,
+          user_id,
+          password: Password,
+          pin: mpin,
+          status,
+          tgl_trans,
+          tgl_transmis,
+          rrn,
+        };
+        console.log(data);
+        const request = await connect_axios(
+          bpr[0].gateway,
+          "gateway_bpr/inquiry_account",
+          data
+        );
+        console.log(request);
+        if (request.code !== "000") {
+          console.log(request);
+          request.data = {
+            status: "Gagal, Akun Tidak Ditemukan",
+          };
+          res.status(200).send(request);
+        } else {
+          let [results, metadata] = await db.sequelize.query(
+              `UPDATE acct_ebpr SET status = ?, user_id = ?, password = ? WHERE no_hp = ? AND no_rek = ?`,
+              {
+              replacements: [status, user_id, Password, no_hp, no_rek],
+              }
+          );
+          console.log(metadata.rowCount);
+          if (!metadata.rowCount) {
+            res.status(200).send({
+            code: "002",
+            status: "ok",
+            message: "Gagal Update Status",
+            data: null,
+            });
+          } else {
+            request["status"] = "Akun telah diaktifkan";
+            console.log({
+              code: "000",
+              status: "ok",
+              message: "Success",
+              data: request,
+            });
+            res.status(200).send({
+              code: "000",
+              status: "ok",
+              message: "Success",
+              data: request,
+            });
+          }
         }
       }
     }
@@ -868,40 +930,56 @@ const update_mpin = async (req, res) => {
     //   });
 
     // if (verifyResponse.valid) {
-    let Mpin = encryptStringWithRsaPublicKey(
-      `${mpin}${no_hp.substring(no_hp.length - 4, no_hp.length)}`,
-      "./utility/privateKey.pem"
+    let bpr = await db.sequelize.query(
+      `SELECT * FROM kd_bpr WHERE bpr_id = ? AND status = '1'`,
+      {
+        replacements: [bpr_id],
+        type: db.sequelize.QueryTypes.SELECT,
+      }
     );
-    const trx_code = "0600";
-    const trx_type = "TRX";
-    const data = {
-      user_id,
-      no_rek,
-      no_hp,
-      bpr_id,
-      trx_code,
-      trx_type,
-      pin: Mpin,
-    };
-    console.log(data);
-    const request = await connect_axios(
-      URL_GATEWAY,
-      "gateway_bpr/inquiry_account",
-      data
-    );
-    console.log(request);
-    if (request.code !== "000") {
-      request.data = {
-        status: request.message,
-      };
-      res.status(200).send(request);
-    } else {
+    if (!bpr.length) {
       res.status(200).send({
-        code: "000",
-        status: "ok",
-        message: "Success",
-        data: "Update Mpin Berhasil",
+        code: "002",
+        status: "Failed",
+        message: "Gagal, Inquiry BPR Tidak Ditemukan",
+        data: null,
       });
+    } else {
+      let Mpin = encryptStringWithRsaPublicKey(
+        `${mpin}${no_hp.substring(no_hp.length - 4, no_hp.length)}`,
+        "./utility/privateKey.pem"
+      );
+      const trx_code = "0600";
+      const trx_type = "TRX";
+      const data = {
+        user_id,
+        no_rek,
+        no_hp,
+        bpr_id,
+        trx_code,
+        trx_type,
+        pin: Mpin,
+      };
+      console.log(data);
+      const request = await connect_axios(
+        bpr[0].gateway,
+        "gateway_bpr/inquiry_account",
+        data
+      );
+      console.log(request);
+      if (request.code !== "000") {
+        request.data = {
+          status: request.message,
+        };
+        res.status(200).send(request);
+      } else {
+        res.status(200).send({
+          code: "000",
+          status: "ok",
+          message: "Success",
+          data: "Update Mpin Berhasil",
+        });
+      }
     }
     // } else {
     //   res.status(200).send({
@@ -934,74 +1012,90 @@ const update_pw = async (req, res) => {
     //   });
 
     // if (verifyResponse.valid) {
-    let account = await db.sequelize.query(
-      `SELECT * FROM acct_ebpr WHERE no_hp = ? AND user_id = ? AND no_rek = ?`,
+    let bpr = await db.sequelize.query(
+      `SELECT * FROM kd_bpr WHERE bpr_id = ? AND status = '1'`,
       {
-        replacements: [no_hp, user_id, no_rek],
+        replacements: [bpr_id],
         type: db.sequelize.QueryTypes.SELECT,
       }
     );
-    if (!account.length) {
+    if (!bpr.length) {
       res.status(200).send({
-        code: "001",
-        status: "ok",
-        message: "Nama Pengguna atau kata sandi salah",
+        code: "002",
+        status: "Failed",
+        message: "Gagal, Inquiry BPR Tidak Ditemukan",
         data: null,
       });
     } else {
-      let Pw_baru = encryptStringWithRsaPublicKey(
-        pw_baru,
-        "./utility/privateKey.pem"
+      let account = await db.sequelize.query(
+        `SELECT * FROM acct_ebpr WHERE no_hp = ? AND user_id = ? AND no_rek = ?`,
+        {
+          replacements: [no_hp, user_id, no_rek],
+          type: db.sequelize.QueryTypes.SELECT,
+        }
       );
-      let pin = encryptStringWithRsaPublicKey(
-        `${mpin}${no_hp.substring(no_hp.length - 4, no_hp.length)}`,
-        "./utility/privateKey.pem"
-      );
-      const trx_code = "0500";
-      const trx_type = "TRX";
-      const data = {
-        user_id,
-        no_rek,
-        no_hp,
-        bpr_id:account[0].bpr_id,
-        trx_code,
-        trx_type,
-        pin,
-      };
-      console.log(data);
-      const request = await connect_axios(
-        URL_GATEWAY,
-        "gateway_bpr/inquiry_account",
-        data
-      );
-      console.log(request);
-      if (request.code !== "000") {
-        request.data = {
-          status: request.message,
-        };
-        res.status(200).send(request);
+      if (!account.length) {
+        res.status(200).send({
+          code: "001",
+          status: "ok",
+          message: "Nama Pengguna atau kata sandi salah",
+          data: null,
+        });
       } else {
-        let [results, metadata] = await db.sequelize.query(
-          `UPDATE acct_ebpr SET password = ? WHERE user_id = ? AND no_hp = ? AND no_rek = ?`,
-          {
-            replacements: [Pw_baru, user_id, no_hp, no_rek],
-          }
+        let Pw_baru = encryptStringWithRsaPublicKey(
+          pw_baru,
+          "./utility/privateKey.pem"
         );
-        console.log(metadata.rowCount);
-        if (!metadata.rowCount) {
-          res.status(200).send({
-            code: "002",
-            status: "ok",
-            message: "Gagal Update Password",
-            data: null,
-          });
+        let pin = encryptStringWithRsaPublicKey(
+          `${mpin}${no_hp.substring(no_hp.length - 4, no_hp.length)}`,
+          "./utility/privateKey.pem"
+        );
+        const trx_code = "0500";
+        const trx_type = "TRX";
+        const data = {
+          user_id,
+          no_rek,
+          no_hp,
+          bpr_id:account[0].bpr_id,
+          trx_code,
+          trx_type,
+          pin,
+        };
+        console.log(data);
+        const request = await connect_axios(
+          bpr[0].gateway,
+          "gateway_bpr/inquiry_account",
+          data
+        );
+        console.log(request);
+        if (request.code !== "000") {
+          request.data = {
+            status: request.message,
+          };
+          res.status(200).send(request);
         } else {
-          res.status(200).send({
-            code: "000",
-            status: "ok",
-            message: "Success",
-            data: "Update Password Berhasil",
-          });
+          let [results, metadata] = await db.sequelize.query(
+            `UPDATE acct_ebpr SET password = ? WHERE user_id = ? AND no_hp = ? AND no_rek = ?`,
+            {
+              replacements: [Pw_baru, user_id, no_hp, no_rek],
+            }
+          );
+          console.log(metadata.rowCount);
+          if (!metadata.rowCount) {
+            res.status(200).send({
+              code: "002",
+              status: "ok",
+              message: "Gagal Update Password",
+              data: null,
+            });
+          } else {
+            res.status(200).send({
+              code: "000",
+              status: "ok",
+              message: "Success",
+              data: "Update Password Berhasil",
+            });
+          }
         }
       }
     }
