@@ -517,7 +517,7 @@ const validate_user = async (req, res) => {
   try {
     console.log("REQ BODY VALIDATE USER");
     console.log(req.body);
-    let bpr = await db.sequelize.query(
+    let bpr = await db1.sequelize.query(
       `SELECT * FROM kd_bpr WHERE bpr_id = ? AND status = '1'`,
       {
         replacements: [bpr_id],
@@ -655,7 +655,7 @@ const activate_user = async (req, res) => {
   try {
     console.log("REQ BODY AKTIVASI USER");
     console.log(req.body);
-    let bpr = await db.sequelize.query(
+    let bpr = await db1.sequelize.query(
       `SELECT * FROM kd_bpr WHERE bpr_id = ? AND status = '1'`,
       {
         replacements: [bpr_id],
@@ -930,7 +930,7 @@ const update_mpin = async (req, res) => {
     //   });
 
     // if (verifyResponse.valid) {
-    let bpr = await db.sequelize.query(
+    let bpr = await db1.sequelize.query(
       `SELECT * FROM kd_bpr WHERE bpr_id = ? AND status = '1'`,
       {
         replacements: [bpr_id],
@@ -1012,21 +1012,6 @@ const update_pw = async (req, res) => {
     //   });
 
     // if (verifyResponse.valid) {
-    let bpr = await db.sequelize.query(
-      `SELECT * FROM kd_bpr WHERE bpr_id = ? AND status = '1'`,
-      {
-        replacements: [bpr_id],
-        type: db.sequelize.QueryTypes.SELECT,
-      }
-    );
-    if (!bpr.length) {
-      res.status(200).send({
-        code: "002",
-        status: "Failed",
-        message: "Gagal, Inquiry BPR Tidak Ditemukan",
-        data: null,
-      });
-    } else {
       let account = await db.sequelize.query(
         `SELECT * FROM acct_ebpr WHERE no_hp = ? AND user_id = ? AND no_rek = ?`,
         {
@@ -1042,6 +1027,21 @@ const update_pw = async (req, res) => {
           data: null,
         });
       } else {
+        let bpr = await db1.sequelize.query(
+          `SELECT * FROM kd_bpr WHERE bpr_id = ? AND status = '1'`,
+          {
+            replacements: [account[0].bpr_id],
+            type: db.sequelize.QueryTypes.SELECT,
+          }
+        );
+        if (!bpr.length) {
+          res.status(200).send({
+            code: "002",
+            status: "Failed",
+            message: "Gagal, Inquiry BPR Tidak Ditemukan",
+            data: null,
+          });
+        } else {
         let Pw_baru = encryptStringWithRsaPublicKey(
           pw_baru,
           "./utility/privateKey.pem"
@@ -1050,7 +1050,7 @@ const update_pw = async (req, res) => {
           `${mpin}${no_hp.substring(no_hp.length - 4, no_hp.length)}`,
           "./utility/privateKey.pem"
         );
-        const trx_code = "0500";
+        const trx_code = "0700";
         const trx_type = "TRX";
         const data = {
           user_id,
