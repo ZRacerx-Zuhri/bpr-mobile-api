@@ -338,7 +338,7 @@ const Login = async (req, res) => {
               to: `+62${Request[0].no_hp.replace(/^0/, "")}`,
               channel: "sms",
             });
-          console.log("sms terkirim", otpResponse);
+         console.log("sms terkirim", otpResponse);
           res.status(200).send({
             code: "000",
             status: "ok",
