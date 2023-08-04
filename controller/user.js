@@ -520,7 +520,7 @@ const validate_user = async (req, res) => {
     let bpr = await db1.sequelize.query(
       `SELECT * FROM kd_bpr WHERE bpr_id = ? AND status = '1'`,
       {
-        replacements: [bpr_id],
+        replacements: ["600931"],
         type: db.sequelize.QueryTypes.SELECT,
       }
     );
@@ -532,13 +532,13 @@ const validate_user = async (req, res) => {
         data: null,
       });
     } else {
-      const trx_code = "0100";
+      const trx_code = "0800";
       const trx_type = "TRX";
       const tgl_transmis = moment().format("YYMMDDHHmmss");
       const data = {
         no_rek,
         no_hp,
-        bpr_id,
+        "600931",
         trx_code,
         trx_type,
         tgl_trans,
@@ -891,12 +891,43 @@ const update_device = async (req, res) => {
           data: null,
         });
       } else {
-        res.status(200).send({
-          code: "000",
-          status: "ok",
-          message: "Success",
-          data: "Verifikasi Berhasil",
-        });
+      //  let Request = await db.sequelize.query(
+      //    `SELECT
+      //    ac.unique_id
+      //    FROM  acct_ebpr ac INNER JOIN kd_bpr kd on ac.bpr_id = kd.bpr_id WHERE user_id = ?`,
+      //    {
+      //      replacements: [user_id],
+      //      type: db.sequelize.QueryTypes.SELECT,
+      //    }
+      //  );
+
+      //  let docData = await Get_data_Firestore(
+      //    "user_login",
+      //    Request[0].unique_id
+      //  );
+
+      //  if (!docData.exists) {
+      //    await post_data({ device_id }, "user_login", Request[0].unique_id);
+
+          res.status(200).send({
+            code: "000",
+            status: "ok",
+            message: "Success",
+            data: "Verifikasi Berhasil",
+          });
+      //  } else {
+      //    console.log("data not Found");
+      //    await Update_data_Firestore("user_login", Request[0].unique_id, {
+      //      device_id,
+      //    });
+
+      //    res.status(200).send({
+      //      code: "000",
+      //      status: "ok",
+      //      message: "Success",
+      //      data: "Verifikasi Berhasil",
+      //  });
+      //  }
       }
     } else {
       res.status(200).send({
