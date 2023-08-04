@@ -520,7 +520,7 @@ const validate_user = async (req, res) => {
     let bpr = await db1.sequelize.query(
       `SELECT * FROM kd_bpr WHERE bpr_id = ? AND status = '1'`,
       {
-        replacements: ["600931"],
+        replacements: [bpr_id],
         type: db.sequelize.QueryTypes.SELECT,
       }
     );
@@ -532,13 +532,13 @@ const validate_user = async (req, res) => {
         data: null,
       });
     } else {
-      const trx_code = "0800";
+      const trx_code = "0100";
       const trx_type = "TRX";
       const tgl_transmis = moment().format("YYMMDDHHmmss");
       const data = {
         no_rek,
         no_hp,
-        bpr_id: "600931",
+        bpr_id,
         trx_code,
         trx_type,
         tgl_trans,
@@ -597,34 +597,83 @@ const validate_ktp = async (req, res) => {
     console.log("REQ BODY INQUIRY");
     console.log(req.body);
 
-    let user = await db.sequelize.query(
-      `SELECT nama, no_hp FROM dummy_ktp WHERE no_ktp = ?`,
+    let bpr = await db1.sequelize.query(
+      `SELECT * FROM kd_bpr WHERE bpr_id = ? AND status = '1'`,
       {
-        replacements: [ktp],
+        replacements: ["600931"],
         type: db.sequelize.QueryTypes.SELECT,
       }
     );
-    if (!user.length) {
+    if (!bpr.length) {
       res.status(200).send({
         code: "002",
         status: "Failed",
-        message: "Gagal, KTP Tidak Ditemukan",
+        message: "Gagal, Inquiry BPR Tidak Ditemukan",
         data: null,
       });
     } else {
-      console.log({
-        code: "000",
-        status: "ok",
-        message: "Success",
-        data: user[0],
-      });
-      res.status(200).send({
-        code: "000",
-        status: "ok",
-        message: "Success",
-        data: user[0],
-      });
+      const trx_code = "0800";
+      const trx_type = "TRX";
+      const data = {
+        no_ktp: ktp,
+        bpr_id: "600931",
+        trx_code,
+        trx_type,
+      };
+      console.log("data");
+      console.log(data);
+      const request = await connect_axios(
+        bpr[0].gateway,
+        "gateway_bpr/inquiry_account",
+        data
+      );
+      if (request.code !== "000") {
+        console.log(request);
+        res.status(200).send(request);
+      } else {
+        console.log({
+          code: "000",
+          status: "ok",
+          message: "Success",
+          data: request,
+        });
+        res.status(200).send({
+          code: "000",
+          status: "ok",
+          message: "Success",
+          data: request,
+        });
+      }
     }
+
+    // let user = await db.sequelize.query(
+    //   `SELECT nama, no_hp FROM dummy_ktp WHERE no_ktp = ?`,
+    //   {
+    //     replacements: [ktp],
+    //     type: db.sequelize.QueryTypes.SELECT,
+    //   }
+    // );
+    // if (!user.length) {
+    //   res.status(200).send({
+    //     code: "002",
+    //     status: "Failed",
+    //     message: "Gagal, KTP Tidak Ditemukan",
+    //     data: null,
+    //   });
+    // } else {
+    //   console.log({
+    //     code: "000",
+    //     status: "ok",
+    //     message: "Success",
+    //     data: user[0],
+    //   });
+    //   res.status(200).send({
+    //     code: "000",
+    //     status: "ok",
+    //     message: "Success",
+    //     data: user[0],
+    //   });
+    // }
   } catch (error) {
     //--error server--//
     console.log("erro get product", error);
