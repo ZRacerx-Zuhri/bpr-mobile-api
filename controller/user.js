@@ -538,7 +538,7 @@ const validate_user = async (req, res) => {
       const data = {
         no_rek,
         no_hp,
-        "600931",
+        bpr_id: "600931",
         trx_code,
         trx_type,
         tgl_trans,
@@ -1035,6 +1035,7 @@ const update_pw = async (req, res) => {
   try {
     let { user_id, pw_baru, no_rek, no_hp, mpin } = req.body;
 
+<<<<<<< HEAD
     // let verifyResponse = await client.verify.v2
     //   .services(TWILIO_SERVICE_SID)
     //   .verificationChecks.create({
@@ -1138,6 +1139,34 @@ const update_pw = async (req, res) => {
     //     data: null,
     //   });
     // }
+=======
+    let Pw_baru = encryptStringWithRsaPublicKey(
+      pw_baru,
+      "./utility/privateKey.pem"
+    );
+    let [results, metadata] = await db.sequelize.query(
+      `UPDATE acct_ebpr SET password = ? WHERE user_id = ? AND no_hp = ? AND no_rek = ?`,
+      {
+        replacements: [Pw_baru, user_id, no_hp, no_rek],
+      }
+    );
+    console.log(metadata.rowCount);
+    if (!metadata.rowCount) {
+      res.status(200).send({
+        code: "002",
+        status: "ok",
+        message: "Gagal Update Password",
+        data: null,
+      });
+    } else {
+      res.status(200).send({
+        code: "000",
+        status: "ok",
+        message: "Success",
+        data: "Update Password Berhasil",
+      });
+    }
+>>>>>>> d7d218d9af81bb315f22ef29f85a75d29968a158
   } catch (error) {
     console.log("error device update", error);
 
