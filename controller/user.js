@@ -1035,111 +1035,6 @@ const update_pw = async (req, res) => {
   try {
     let { user_id, pw_baru, no_rek, no_hp, mpin } = req.body;
 
-<<<<<<< HEAD
-    // let verifyResponse = await client.verify.v2
-    //   .services(TWILIO_SERVICE_SID)
-    //   .verificationChecks.create({
-    //     to: `+62${no_hp.replace(/^0/, "")}`,
-    //     code: otp,
-    //   });
-
-    // if (verifyResponse.valid) {
-      let account = await db.sequelize.query(
-        `SELECT * FROM acct_ebpr WHERE no_hp = ? AND user_id = ? AND no_rek = ?`,
-        {
-          replacements: [no_hp, user_id, no_rek],
-          type: db.sequelize.QueryTypes.SELECT,
-        }
-      );
-      if (!account.length) {
-        res.status(200).send({
-          code: "001",
-          status: "ok",
-          message: "Nama Pengguna atau kata sandi salah",
-          data: null,
-        });
-      } else {
-        let bpr = await db1.sequelize.query(
-          `SELECT * FROM kd_bpr WHERE bpr_id = ? AND status = '1'`,
-          {
-            replacements: [account[0].bpr_id],
-            type: db.sequelize.QueryTypes.SELECT,
-          }
-        );
-        if (!bpr.length) {
-          res.status(200).send({
-            code: "002",
-            status: "Failed",
-            message: "Gagal, Inquiry BPR Tidak Ditemukan",
-            data: null,
-          });
-        } else {
-        let Pw_baru = encryptStringWithRsaPublicKey(
-          pw_baru,
-          "./utility/privateKey.pem"
-        );
-        let pin = encryptStringWithRsaPublicKey(
-          `${mpin}${no_hp.substring(no_hp.length - 4, no_hp.length)}`,
-          "./utility/privateKey.pem"
-        );
-        const trx_code = "0700";
-        const trx_type = "TRX";
-        const data = {
-          user_id,
-          no_rek,
-          no_hp,
-          bpr_id:account[0].bpr_id,
-          trx_code,
-          trx_type,
-          pin,
-        };
-        console.log(data);
-        const request = await connect_axios(
-          bpr[0].gateway,
-          "gateway_bpr/inquiry_account",
-          data
-        );
-        console.log(request);
-        if (request.code !== "000") {
-          request.data = {
-            status: request.message,
-          };
-          res.status(200).send(request);
-        } else {
-          let [results, metadata] = await db.sequelize.query(
-            `UPDATE acct_ebpr SET password = ? WHERE user_id = ? AND no_hp = ? AND no_rek = ?`,
-            {
-              replacements: [Pw_baru, user_id, no_hp, no_rek],
-            }
-          );
-          console.log(metadata.rowCount);
-          if (!metadata.rowCount) {
-            res.status(200).send({
-              code: "002",
-              status: "ok",
-              message: "Gagal Update Password",
-              data: null,
-            });
-          } else {
-            res.status(200).send({
-              code: "000",
-              status: "ok",
-              message: "Success",
-              data: "Update Password Berhasil",
-            });
-          }
-        }
-      }
-    }
-    // } else {
-    //   res.status(200).send({
-    //     code: "002",
-    //     status: "ok",
-    //     message: "Verifikasi Gagal",
-    //     data: null,
-    //   });
-    // }
-=======
     let Pw_baru = encryptStringWithRsaPublicKey(
       pw_baru,
       "./utility/privateKey.pem"
@@ -1166,7 +1061,6 @@ const update_pw = async (req, res) => {
         data: "Update Password Berhasil",
       });
     }
->>>>>>> d7d218d9af81bb315f22ef29f85a75d29968a158
   } catch (error) {
     console.log("error device update", error);
 
