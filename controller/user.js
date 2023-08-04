@@ -631,18 +631,8 @@ const validate_ktp = async (req, res) => {
         console.log(request);
         res.status(200).send(request);
       } else {
-        console.log({
-          code: "000",
-          status: "ok",
-          message: "Success",
-          data: request,
-        });
-        res.status(200).send({
-          code: "000",
-          status: "ok",
-          message: "Success",
-          data: request,
-        });
+        console.log(request);
+        res.status(200).send(request);
       }
     }
 
