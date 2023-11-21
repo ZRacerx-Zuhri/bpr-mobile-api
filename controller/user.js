@@ -10,10 +10,18 @@ var fs = require("fs");
 let db = require("../dbConnect/index");
 let db1 = require("../dbConnect/middleware");
 let jwt = require("jsonwebtoken");
-
+const {
+  Get_data_Firestore,
+  post_data,
+  Update_data_Firestore,
+} = require("./firestore");
 const moment = require("moment");
-const { TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_SERVICE_SID } =
-  process.env;
+const {
+  TWILIO_ACCOUNT_SID,
+  TWILIO_AUTH_TOKEN,
+  TWILIO_SERVICE_SID,
+  ADDS_MEDIA_KEY,
+} = process.env;
 
 const client = require("twilio")(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN);
 
@@ -76,7 +84,7 @@ const createUser = async (req, res) => {
 const saldo = async (req, res) => {
   let { no_rek, nama_rek, bpr_id } = req.body;
   try {
-    let bpr = await db1.sequelize.query(
+    let bpr = await db.sequelize.query(
       `SELECT * FROM kd_bpr WHERE bpr_id = ? AND status = '1'`,
       {
         replacements: [bpr_id],
@@ -250,12 +258,15 @@ const aktivasi = async (req, res) => {
 
 const Login = async (req, res) => {
   let { user_id, password, device_id } = req.body;
-  // console.log("tes...");
+
   try {
     let Password = encryptStringWithRsaPublicKey(
       password,
       "./utility/privateKey.pem"
     );
+
+    console.log(Password);
+
     let Request = await db.sequelize.query(
       `SELECT ac.bpr_id,
       ac.no_rek,
@@ -268,7 +279,7 @@ const Login = async (req, res) => {
       kd.bpr_logo,
       ac.device_id,
       ac.unique_id
-      FROM  acct_ebpr ac INNER JOIN kd_bpr kd on ac.bpr_id = kd.bpr_id WHERE password = ? AND user_id = ?`,
+      FROM acct_ebpr ac INNER JOIN kd_bpr kd on ac.bpr_id = kd.bpr_id WHERE ac.password = ? AND user_id = ?`,
       {
         replacements: [Password, user_id],
         type: db.sequelize.QueryTypes.SELECT,
@@ -332,18 +343,76 @@ const Login = async (req, res) => {
             data: [{ ...Request[0], accessToken, refreshToken, valid: true }],
           });
         } else {
-          let otpResponse = await client.verify.v2
-            .services(TWILIO_SERVICE_SID)
-            .verifications.create({
-              to: `+62${Request[0].no_hp.replace(/^0/, "")}`,
-              channel: "sms",
-            });
-         console.log("sms terkirim", otpResponse);
+          let otp = Math.floor(100000 + Math.random() * 900000);
+
+          let otpEncrypt = encryptStringWithRsaPublicKey(
+            `${otp}`,
+            "./utility/privateKey.pem"
+          );
+
+          let statusSMS = await axios.post(
+            "https://app.adsmedia.id/api/otp/sms",
+            {
+              messaging_product: "smsotp",
+              phone: Request[0].no_hp,
+              template: `sms_default`,
+              secret: 0,
+              parameters: {
+                parameter1: otp,
+              },
+            },
+            {
+              headers: {
+                Authorization: `Bearer ${ADDS_MEDIA_KEY}`,
+                "Content-Type": "application/json",
+              },
+            }
+          );
+
+          let collOTP = await db.sequelize.query(
+            `SELECT 
+            failed_count
+            ,generate_count  
+            FROM  otp_log where user_id = ?`,
+            {
+              replacements: [user_id],
+              type: db.sequelize.QueryTypes.SELECT,
+            }
+          );
+
+          if (collOTP.length > 0) {
+            if (
+              collOTP[0].failed_count >= 3 ||
+              collOTP[0].generate_count >= 3
+            ) {
+              res.status(200).send({
+                code: "094",
+                status: "ok",
+                message: "Anda melewati batas OTP, silakan coba 1 jam lagi",
+                data: null,
+              });
+              return;
+            }
+          }
+
+          let inserOTPLog = await db.sequelize.query(`call insert_otp(?,?)`, {
+            replacements: [user_id, otpEncrypt],
+          });
+
+          // let otpResponse = await client.verify.v2
+          //   .services(TWILIO_SERVICE_SID)
+          //   .verifications.create({
+          //     to: `+62${Request[0].no_hp.replace(/^0/, "")}`,
+          //     channel: "sms",
+          //   });
+          //console.log("sms terkirim", statusSMS);
           res.status(200).send({
             code: "000",
             status: "ok",
             message: "Success",
-            data: [{ ...Request[0], accessToken, refreshToken, valid: false }],
+            data: [
+              { ...Request[0], accessToken, refreshToken, valid: false, otp },
+            ],
           });
         }
       }
@@ -427,7 +496,7 @@ const inquiry_account = async (req, res) => {
   try {
     console.log("REQ BODY INQUIRY");
     console.log(req.body);
-    let bpr = await db1.sequelize.query(
+    let bpr = await db.sequelize.query(
       `SELECT * FROM kd_bpr WHERE bpr_id = ? AND status = '1'`,
       {
         replacements: [bpr_id],
@@ -517,7 +586,7 @@ const validate_user = async (req, res) => {
   try {
     console.log("REQ BODY VALIDATE USER");
     console.log(req.body);
-    let bpr = await db1.sequelize.query(
+    let bpr = await db.sequelize.query(
       `SELECT * FROM kd_bpr WHERE bpr_id = ? AND status = '1'`,
       {
         replacements: [bpr_id],
@@ -592,12 +661,12 @@ const validate_user = async (req, res) => {
 
 // API untuk Inquiry Account
 const validate_ktp = async (req, res) => {
-  let { ktp, tgl_trans, tgl_transmis, rrn } = req.body;
+  let { ktp, tgl_trans, tgl_transmis, rrn, bpr_id } = req.body;
   try {
-    console.log("REQ BODY INQUIRY");
+    console.log("REQ BODY VALIDATE KTP");
     console.log(req.body);
 
-    let bpr = await db1.sequelize.query(
+    let bpr = await db.sequelize.query(
       `SELECT * FROM kd_bpr WHERE bpr_id = ? AND status = '1'`,
       {
         replacements: ["600931"],
@@ -616,7 +685,7 @@ const validate_ktp = async (req, res) => {
       const trx_type = "TRX";
       const data = {
         no_ktp: ktp,
-        bpr_id: "600931",
+        bpr_id,
         trx_code,
         trx_type,
       };
@@ -694,7 +763,7 @@ const activate_user = async (req, res) => {
   try {
     console.log("REQ BODY AKTIVASI USER");
     console.log(req.body);
-    let bpr = await db1.sequelize.query(
+    let bpr = await db.sequelize.query(
       `SELECT * FROM kd_bpr WHERE bpr_id = ? AND status = '1'`,
       {
         replacements: [bpr_id],
@@ -737,12 +806,14 @@ const activate_user = async (req, res) => {
             "./utility/privateKey.pem"
           );
           console.log(`${(parseInt(pin) + 111111 - 999999) / 2}`);
-          console.log(`${pin}${no_hp.substring(no_hp.length - 4, no_hp.length)}`);
+          console.log(
+            `${pin}${no_hp.substring(no_hp.length - 4, no_hp.length)}`
+          );
           let mpin = encryptStringWithRsaPublicKey(
             `${pin}${no_hp.substring(no_hp.length - 4, no_hp.length)}`,
             "./utility/privateKey.pem"
           );
-          const trx_code = "0200";
+          const trx_code = "0900";
           const trx_type = "TRX";
           const tgl_transmis = moment().format("YYMMDDHHmmss");
           const data = {
@@ -754,12 +825,16 @@ const activate_user = async (req, res) => {
             user_id,
             password: Password,
             pin: mpin,
+            no_ktp,
             status,
             tgl_trans,
             tgl_transmis,
             rrn,
+            xusername: bpr[0].username,
+            xpassword: bpr[0].password,
           };
           console.log(data);
+          console.log("REQ DATA KEEPING 1");
           const request = await connect_axios(
             bpr[0].gateway,
             "gateway_bpr/inquiry_account",
@@ -785,9 +860,9 @@ const activate_user = async (req, res) => {
               run_number.length - 4,
               run_number.length
             )}`;
-            
+
             let [results, metadata] = await db.sequelize.query(
-              `INSERT INTO acct_ebpr(unique_id,no_hp,bpr_id,no_rek,no_ktp,nama,nama_rek,user_id,password,status) VALUES (?,?,?,?,?,?,?,?,?,?)`,
+              `INSERT INTO acct_ebpr(unique_id,no_hp,bpr_id,no_rek,no_ktp,nama,nama_rek,user_id,password,status,id_nasabah_keeping) VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
               {
                 replacements: [
                   unique_id,
@@ -800,6 +875,7 @@ const activate_user = async (req, res) => {
                   user_id,
                   Password,
                   status,
+                  request.data.id_nasabah
                 ],
               }
             );
@@ -829,7 +905,7 @@ const activate_user = async (req, res) => {
           `${pin}${no_hp.substring(no_hp.length - 4, no_hp.length)}`,
           "./utility/privateKey.pem"
         );
-        const trx_code = "0200";
+        const trx_code = "0900";
         const trx_type = "TRX";
         const tgl_transmis = moment().format("YYMMDDHHmmss");
         const data = {
@@ -841,12 +917,16 @@ const activate_user = async (req, res) => {
           user_id,
           password: Password,
           pin: mpin,
+          no_ktp,
           status,
           tgl_trans,
           tgl_transmis,
           rrn,
+          xusername: bpr[0].username,
+          xpassword: bpr[0].password,
         };
         console.log(data);
+        console.log("REQ DATA KEEPING 2");
         const request = await connect_axios(
           bpr[0].gateway,
           "gateway_bpr/inquiry_account",
@@ -861,18 +941,18 @@ const activate_user = async (req, res) => {
           res.status(200).send(request);
         } else {
           let [results, metadata] = await db.sequelize.query(
-              `UPDATE acct_ebpr SET status = ?, user_id = ?, password = ? WHERE no_hp = ? AND no_rek = ?`,
-              {
-              replacements: [status, user_id, Password, no_hp, no_rek],
-              }
+            `UPDATE acct_ebpr SET status = ?, user_id = ?, password = ?, id_nasabah_keeping = ? WHERE no_hp = ? AND no_rek = ?`,
+            {
+              replacements: [status, user_id, Password, no_hp, no_rek, request.data.id_nasabah],
+            }
           );
           console.log(metadata.rowCount);
           if (!metadata.rowCount) {
             res.status(200).send({
-            code: "002",
-            status: "ok",
-            message: "Gagal Update Status",
-            data: null,
+              code: "002",
+              status: "ok",
+              message: "Gagal Update Status",
+              data: null,
             });
           } else {
             request["status"] = "Akun telah diaktifkan";
@@ -907,74 +987,134 @@ const update_device = async (req, res) => {
   try {
     let { user_id, no_hp, device_id, otp } = req.body;
 
-    let verifyResponse = await client.verify.v2
-      .services(TWILIO_SERVICE_SID)
-      .verificationChecks.create({
-        to: `+62${no_hp.replace(/^0/, "")}`,
-        code: otp,
-      });
+    // let verifyResponse = await client.verify.v2
+    //   .services(TWILIO_SERVICE_SID)
+    //   .verificationChecks.create({
+    //     to: `+62${no_hp.replace(/^0/, "")}`,
+    //     code: otp,
+    //   });
 
-    if (verifyResponse.valid) {
-      let [results, metadata] = await db.sequelize.query(
-        `UPDATE acct_ebpr SET device_id = ? WHERE user_id = ? AND no_hp = ?`,
+    let otpEncrypt = encryptStringWithRsaPublicKey(
+      `${otp}`,
+      "./utility/privateKey.pem"
+    );
+
+    let matchUser = await db.sequelize.query(
+      `Select user_id, otp, tgl_expired, failed_count from otp_log a
+      where a.user_id = ?;`,
+      {
+        replacements: [user_id],
+        type: db.sequelize.QueryTypes.SELECT,
+      }
+    );
+
+    if (!matchUser.length) {
+      res.status(200).send({
+        code: "091",
+        status: "ok",
+        message: "Verifikasi Gagal",
+        data: null,
+      });
+      return;
+    }
+
+    if (matchUser[0].failed_count >= 3) {
+      res.status(200).send({
+        code: "094",
+        status: "ok",
+        message: "Anda melewati batas kesalahan memasukkan OTP",
+        data: null,
+      });
+      return;
+    }
+
+    if (matchUser[0].otp != otpEncrypt) {
+      let UpdateOTPTokenFailed = await db.sequelize.query(
+        `UPDATE otp_log SET failed_count = failed_count + 1 WHERE user_id = ?`,
         {
-          replacements: [device_id, user_id, no_hp],
+          replacements: [user_id],
         }
       );
-      console.log(metadata.rowCount);
-      if (!metadata.rowCount) {
-        res.status(200).send({
-          code: "002",
-          status: "ok",
-          message: "Verifikasi Gagal",
-          data: null,
-        });
-      } else {
-      //  let Request = await db.sequelize.query(
-      //    `SELECT
-      //    ac.unique_id
-      //    FROM  acct_ebpr ac INNER JOIN kd_bpr kd on ac.bpr_id = kd.bpr_id WHERE user_id = ?`,
-      //    {
-      //      replacements: [user_id],
-      //      type: db.sequelize.QueryTypes.SELECT,
-      //    }
-      //  );
 
-      //  let docData = await Get_data_Firestore(
-      //    "user_login",
-      //    Request[0].unique_id
-      //  );
+      res.status(200).send({
+        code: "092",
+        status: "ok",
+        message: "Verifikasi Gagal",
+        data: null,
+      });
+      return;
+    }
 
-      //  if (!docData.exists) {
-      //    await post_data({ device_id }, "user_login", Request[0].unique_id);
+    if (matchUser[0].tgl_expired < Date.now()) {
+      res.status(200).send({
+        code: "093",
+        status: "ok",
+        message: "OTP Expired",
+        data: null,
+      });
+      return;
+    }
 
-          res.status(200).send({
-            code: "000",
-            status: "ok",
-            message: "Success",
-            data: "Verifikasi Berhasil",
-          });
-      //  } else {
-      //    console.log("data not Found");
-      //    await Update_data_Firestore("user_login", Request[0].unique_id, {
-      //      device_id,
-      //    });
-
-      //    res.status(200).send({
-      //      code: "000",
-      //      status: "ok",
-      //      message: "Success",
-      //      data: "Verifikasi Berhasil",
-      //  });
-      //  }
+    let [results, metadata] = await db.sequelize.query(
+      `UPDATE acct_ebpr SET device_id = ? WHERE user_id = ? AND no_hp = ?`,
+      {
+        replacements: [device_id, user_id, no_hp],
       }
-    } else {
+    );
+
+    console.log(metadata.rowCount);
+    if (!metadata.rowCount) {
       res.status(200).send({
         code: "002",
         status: "ok",
         message: "Verifikasi Gagal",
         data: null,
       });
+    } else {
+      let Request = await db.sequelize.query(
+        `SELECT
+         ac.unique_id
+         FROM  acct_ebpr ac INNER JOIN kd_bpr kd on ac.bpr_id = kd.bpr_id WHERE user_id = ?`,
+        {
+          replacements: [user_id],
+          type: db.sequelize.QueryTypes.SELECT,
+        }
+      );
+
+      let docData = await Get_data_Firestore(
+        "user_login",
+        Request[0].unique_id
+      );
+
+      let deleteOTP = await db.sequelize.query(
+        `DELETE from otp_log WHERE user_id = ?`,
+        {
+          replacements: [user_id],
+        }
+      );
+
+      if (!docData.exists) {
+        await post_data({ device_id }, "user_login", Request[0].unique_id);
+
+        res.status(200).send({
+          code: "000",
+          status: "ok",
+          message: "Success",
+          data: "Verifikasi Berhasil",
+        });
+      } else {
+        console.log("data not Found");
+        await Update_data_Firestore("user_login", Request[0].unique_id, {
+          device_id,
+        });
+
+        res.status(200).send({
+          code: "000",
+          status: "ok",
+          message: "Success",
+          data: "Verifikasi Berhasil",
+        });
+      }
     }
   } catch (error) {
     console.log("error device update", error);
@@ -1000,7 +1140,7 @@ const update_mpin = async (req, res) => {
     //   });
 
     // if (verifyResponse.valid) {
-    let bpr = await db1.sequelize.query(
+    let bpr = await db.sequelize.query(
       `SELECT * FROM kd_bpr WHERE bpr_id = ? AND status = '1'`,
       {
         replacements: [bpr_id],
