@@ -899,12 +899,6 @@ const activate_user = async (req, res) => {
           password,
           "./utility/privateKey.pem"
         );
-        console.log(`${(parseInt(pin) + 111111 - 999999) / 2}`);
-        console.log(`${pin}${no_hp.substring(no_hp.length - 4, no_hp.length)}`);
-        let mpin = encryptStringWithRsaPublicKey(
-          `${pin}${no_hp.substring(no_hp.length - 4, no_hp.length)}`,
-          "./utility/privateKey.pem"
-        );
         const trx_code = "0900";
         const trx_type = "TRX";
         const tgl_transmis = moment().format("YYMMDDHHmmss");
@@ -916,7 +910,7 @@ const activate_user = async (req, res) => {
           trx_type,
           user_id,
           password: Password,
-          pin: mpin,
+          pin,
           no_ktp,
           status,
           tgl_trans,
